@@ -1,0 +1,26 @@
+{
+	"name": "reeweb",
+	"compatibility_date": "2026-06-29",
+	// "main": "./cf-worker.ts",
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 1,
+		"logs": {
+			"enabled": true,
+			"head_sampling_rate": 1,
+			"persist": true,
+			"invocation_logs": true
+		},
+		"traces": {
+			"enabled": true,
+			"persist": true,
+			"head_sampling_rate": 1
+		}
+	},
+	"assets": {
+		"binding": "ASSETS",
+		"directory": "./dist",
+		"not_found_handling": "404-page"
+		// "run_worker_first": true
+	}
+}

@@ -1,0 +1,4 @@
+# bunfig.toml
+#preload = ["$config/db"]
+[run]
+noOrphans = true

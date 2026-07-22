@@ -1,0 +1,107 @@
+{#layout('layout')}
+
+<article class="paper">
+
+	<!-- HEADER -->
+	<header class="paper-header">
+
+		<h1 class="paper-title">{= props.title}</h1>
+
+		<div class="paper-authors">
+			{#each props.authors as author}
+				<div class="author">
+					<div class="author-name">{= author.name}</div>
+					{#if author.department}
+						<div class="author-department">{= author.department}</div>
+					{/if}
+					{#if author.affiliation}
+						<div class="author-affiliation">{= author.affiliation}</div>
+					{/if}
+					{#if author.city || author.country}
+						<div class="author-location">
+							{= author.city}
+							{#if author.city && author.country}
+								,
+							{/if}
+							{= author.country}
+						</div>
+					{/if}
+					{#if author.email}
+						<div class="author-email">{= author.email}</div>
+					{/if}
+					{#if author.orcid}
+						<div class="author-orcid">ORCID: {= author.orcid}</div>
+					{/if}
+				</div>
+			{/each}
+		</div>
+
+		<div class="paper-meta">
+			{#if props.published_at}
+				<div>Published: {= js_date_to_locale_string(props.published_at)}</div>
+			{/if}
+			{#if props.doi}
+				<div>DOI: {= props.doi}</div>
+			{/if}
+		</div>
+
+	</header>
+
+	<hr class="section-rule" />
+
+	<!-- ABSTRACT -->
+	{#if props.abstract}
+		<section class="abstract-box">
+			<div class="abstract-inner">
+				<span class="abstract-title">Abstract</span>
+				<span class="abstract-content">{= props.abstract}</span>
+
+				{#if props.keywords && props.keywords.length > 0}
+					<div class="keywords">
+						<span class="keywords-label">Keywords-</span>
+						{#each props.keywords as keyword, index}
+							<span>{= keyword}</span>
+							{#if index < props.keywords.length - 1}
+								,
+							{/if}
+						{/each}
+					</div>
+				{/if}
+			</div>
+		</section>
+	{/if}
+
+	<hr class="section-rule" />
+
+	<!-- BODY -->
+	<main class="paper-body">{~ props.body}</main>
+
+	<!-- ACKNOWLEDGMENT -->
+	{#if props.acknowledgment}
+		<section class="acknowledgment">
+			<h2>Acknowledgment</h2>
+			<div>{~ props.acknowledgment}</div>
+		</section>
+	{/if}
+
+	<!-- REFERENCES -->
+	{#if props.references}
+		<footer class="references">
+			<h2>References</h2>
+			<div>{~ props.references}</div>
+		</footer>
+	{/if}
+
+	<!-- PAPER FOOTER -->
+	{#if props.footer_note || props.updated_at}
+		<div class="paper-footer">
+			{#if props.footer_note}
+				<div>{= props.footer_note}</div>
+			{/if}
+			{#if props.updated_at}
+				<div>Last updated: {= js_datetime_to_locale_string(props.updated_at)}</div>
+			{/if}
+		</div>
+	{/if}
+
+</article>

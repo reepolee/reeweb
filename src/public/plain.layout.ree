@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="{= props.lang }">
+
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<link rel="stylesheet" href="/css/style.min.css?v={= props.version}" />
+		<title>{= props.title}</title>
+		{#if props.canonical_url}
+			<link rel="canonical" href="{~ props.canonical_url }" />
+		{/if}
+	</head>
+
+	<body>
+		<main>{~ props.body}</main>
+
+		{#if props.is_dev}
+			<browser-data></browser-data>
+			<script src="/js/browser-data.js?v={= props.version}" defer></script>
+		{/if}
+	</body>
+
+</html>

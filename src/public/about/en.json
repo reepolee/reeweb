@@ -1,0 +1,26 @@
+{
+	"highlights": [
+		{
+			"label": "Founded",
+			"value": "2024"
+		},
+		{
+			"label": "Users",
+			"value": "500+"
+		},
+		{
+			"label": "Languages",
+			"value": "2"
+		}
+	],
+	"route_name": "about",
+	"ui": {
+		"description": "We build tools for the modern web.",
+		"mission_text": "To provide developers with a seamless experience building data-driven web applications with Bun and our custom templating engine.",
+		"mission_title": "Our Mission",
+		"slovenian_note": "This is the Slovenian version of the page with a different layout.",
+		"team_text": "A small dedicated team passionate about web performance, developer experience, and clean architecture.",
+		"team_title": "Our Team",
+		"title": "About Us"
+	}
+}

@@ -1,0 +1,23 @@
+{#layout("layout")}
+
+<div class="page about-page bg-tinted">
+	<h1>{_ ui.title}</h1>
+	<p class="lead">{_ ui.description}</p>
+
+	<div class="single-wide">
+		<section class="card">
+			<h2>{_ ui.mission_title}</h2>
+			<p>{_ ui.mission_text}</p>
+			<p class="note">{_ ui.slovenian_note}</p>
+		</section>
+	</div>
+
+	<div class="highlights">
+		{#each props.highlights as item}
+			<div class="highlight-item">
+				<strong>{= item.label}</strong>
+				<span>{= item.value}</span>
+			</div>
+		{/each}
+	</div>
+</div>

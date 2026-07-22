@@ -1,0 +1,245 @@
+# reepolee (Reepolee Bun Apps)
+
+> A full-stack Bun application template with zero runtime dependencies - featuring a custom template engine (.ree files), server-side rendering with Tailwind v4, database generators (MySQL/SQLite via Bun SQL API), cookie-based auth, URL localization, CRUD/resource scaffolding, and a static site generator.
+
+Important notes:
+
+- **Zero runtime dependencies.** Only dev dependencies: `tailwindcss`, `@types/bun`. Bun's built-in APIs handle everything - SQL, HTTP server, file I/O, crypto, websockets, Redis.
+- **Not a framework.** reepolee is a project template and toolkit that gives you a starting point for Bun applications with reusable generators, not a framework you install as a dependency.
+- **Custom template engine.** Templates use the `.ree` extension with tags like `{= expr }` (escaped output), `{~ expr }` (raw HTML), `{_ path }` (translation lookup, escaped), `{- path }` (translation lookup, raw HTML), `{@ path }` (translation lookup rendered through markdown), `{#if}`, `{#each}`, `{#layout()}`, `{#include()}`.
+- **snake_case** on the server side (`.ts` files); kebab-case for client JavaScript (`.js` files).
+- **Supports MySQL and SQLite** via config swap in `config/db.ts`. Connection string driven by `CONNECTION_STRING` env var.
+- **Language-aware.** Ships with English and Slovenian translations by default. All routes support URL localization via `route_name` keys in translation JSON.
+
+## Architecture: Two Separate Systems
+
+This project contains **two independent systems** that share infrastructure (template engine, translations, DB schema) but serve entirely different purposes and produce entirely different outputs. They do NOT depend on each other at runtime.
+
+### System 1: Dynamic CRUD Application (server.ts)
+
+**Entry point:** [server.ts](https://github.com/reepolee/reepolee/blob/main/server.ts)
+**Output:** A running HTTP server (no static files are written to disk)
+**Start with:** `bun dev` / `bun start`
+
+This is the main application - a full-stack web app with server-side rendering, a database, and CRUD operations.
+
+[Server entry point](https://github.com/reepolee/reepolee/blob/main/server.ts): Bun.serve() with route table, static file serving, S3 proxy, WebSocket live reload, and fallback 404 handler.
+
+#### Core responsibilities
+
+- **Database-backed CRUD** - Reads and writes data via Bun's SQL API (MySQL or SQLite). Route handlers in `routes/` perform create, read, update, delete operations on database tables. Generators in `generator/` (schema, CRUD, resource) introspect the DB and auto-generate route files, SQL queries, Zod validation schemas, and translations.
+- **Server-side rendering** - Renders `.ree` templates from the `routes/` directory using the custom template engine. Templates receive data from route handlers, DB queries, and translation files.
+- **Middleware pipeline** - Composable middleware stack: `set_lang`, `with_session`, `with_toasts`, `with_lang`, `require_auth_mw`, `require_module_mw`, `timing`, `cors`, `compose`.
+- **Multi-language** - Translation JSON files (`routes/en.json`, `routes/sl.json`, per-route `translations/` folders). Language is detected per-request and merged with route-specific translations.
+- **Live reload** - In dev mode, a WebSocket at `/__reload` notifies the browser on file changes.
+- **S3 / local storage** - Serves media files (avatars, images) from S3-compatible storage or a local directory.
+- **Background worker** - [worker.ts](https://github.com/reepolee/reepolee/blob/main/worker.ts) processes async tasks from a queue (translation jobs, etc.). Started separately with `bun devw` or `bun run worker`.
+- **Module system** - `lib/modules.ts` loads optional modules at startup (e.g., auth, email). Modules can register additional routes.
+
+#### Key files
+
+| File                                                                                            | Role                                         |
+| ----------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| [server.ts](https://github.com/reepolee/reepolee/blob/main/server.ts)                           | Entry point, starts Bun.serve()              |
+| [routes/routes.ts](https://github.com/reepolee/reepolee/blob/main/routes/routes.ts)             | Route definitions (flat array of RouteDef)   |
+| `routes/*.ree`                                                                                  | SSR templates rendered at request time       |
+| `routes/*/index.ts`                                                                             | Route handlers (CRUD operations)             |
+| [lib/template-engine.ts](https://github.com/reepolee/reepolee/blob/main/lib/template_engine.ts) | Custom .ree template engine                  |
+| [lib/render.ts](https://github.com/reepolee/reepolee/blob/main/lib/render.ts)                   | Wraps template rendering into HTTP Response  |
+| [lib/i18n.ts](https://github.com/reepolee/reepolee/blob/main/lib/i18n.ts)                       | Translation loading and merging              |
+| [config/db.ts](https://github.com/reepolee/reepolee/blob/main/config/db.ts)                     | Database connection config (MySQL or SQLite) |
+| `generator/*.ts`                                                                                | Code generators (schema, CRUD, resource)     |
+
+### System 2: Static Site Generator (scripts/static_build.ts)
+
+**Entry point:** [scripts/static_build.ts](https://github.com/reepolee/reepolee/blob/main/scripts/static_build.ts)
+**Output:** A `/dist` directory with static HTML files, CSS, images, JS - ready to upload anywhere
+**Run with:** `bun scripts/static_build.ts`
+
+This is a **completely separate** static site generator. It reads `.ree` templates and `.md` markdown files from the `public/` directory, renders them once with multi-language support, and writes static HTML files to `/dist`. The output is a self-contained static website with no server, no database, and no runtime dependencies.
+
+#### Core responsibilities
+
+- **One-time rendering** - Unlike server.ts which renders templates per-request, this pre-renders every template × every language combination once during SSG. The output is plain `.html` files.
+- **Multi-language output** - For a site with languages `[sl, en]` and default language `sl`:
+    ```
+    /dist/
+      index.html              ← sl (default) home page at root
+      /o-nas/index.html        ← sl /about → localized path from translation "route_name"
+      /en/                     ← en (non-default) with /en prefix
+        index.html
+        /about/index.html      ← en stays as /about (no translation override)
+      /css/style.css           ← static assets copied verbatim
+    ```
+- **Markdown pages** - `.md` files in `public/` are rendered through Bun's built-in markdown parser into HTML, then wrapped in a layout template. Supports YAML frontmatter for metadata (title, layout, sidebar config, etc.).
+- **Sidebar navigation** - Folders with `has_sidebar: true` in their `index.md` frontmatter automatically generate a sidebar listing all sibling `.md` files with their titles.
+- **hreflang tags** - When `--site-url` is provided, generates `<link rel="alternate" hreflang="...">` tags for Google multi-language SEO.
+- **Dynamic data loading** - Templates can have a companion `.ts` file (e.g., `index.ts` next to `index.ree`) that exports `load_template_data()`. Called on every request in `bun run dev` and once per page during SSG. Can fetch live data from an reepolee agent instance via `REEPOLEE_API_URL`. Failures are logged; the page still renders.
+- **Language-variant templates** - Supports `about.sl.ree` / `about.en.ree` / `about.ree` fallback chain. The most specific match per language wins.
+- **Static asset copying** - Non-template files (CSS, JS, images, fonts) are copied verbatim from `public/` to `dist/`.
+- **Localized route paths** - Translation files (`public/en.json`, `public/sl.json`) with `route_name` keys determine output directory names.
+
+#### Key files
+
+| File                                                                                              | Role                                                                      |
+| ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| [scripts/static_build.ts](https://github.com/reepolee/reepolee/blob/main/scripts/static_build.ts) | Entry point, orchestrates full static generation                          |
+| `public/`                                                                                         | Source directory - .ree templates, .md files, translations, static assets |
+| `public/layout.ree`                                                                               | Default layout wrapper for all pages                                      |
+| `public/*.json`                                                                                   | Per-language translation files (sl.json, en.json)                         |
+| `public/*.ts`                                                                                     | Data loaders (export `load_template_data()`)                              |
+| `dist/`                                                                                           | Output directory - static HTML + assets (gitignored)                      |
+| [lib/static_site.ts](https://github.com/reepolee/reepolee/blob/main/lib/static_site.ts)           | Shared helpers: file walking, route mapping, frontmatter parsing          |
+
+#### CLI options
+
+```
+bun scripts/static_build.ts [--public ./public] [--dist ./dist] [--base-url /] [--site-url https://example.com] [--verbose]
+```
+
+### Shared Infrastructure
+
+Both systems share these libraries, but use them independently:
+
+| Library                                              | Used by server.ts  |          Used by static_build.ts          |
+| ---------------------------------------------------- | :----------------: | :---------------------------------------: |
+| `lib/template-engine.ts` / `lib/template_helpers.ts` |  ✓ (per-request)   |         ✓ (per-file, SSG time)            |
+| `lib/i18n.ts` (translation loading)                  | ✓ (from `routes/`) |            ✓ (from `public/`)             |
+| `config/supported_languages.ts`                      |         ✓          |                     ✓                     |
+| `lib/route_aliases.ts` (slugify)                     |         ✓          |                     ✓                     |
+| `config/db.ts`                                       |         ✓          | ✗ (not used; data comes from .ts loaders) |
+
+### When to Use Which
+
+| Scenario                                      | System                                     |
+| --------------------------------------------- | ------------------------------------------ |
+| User needs to log in, edit data, perform CRUD | Server (`server.ts`)                       |
+| User needs a marketing site, docs, blog       | Static generator (`scripts/static_build.ts`) |
+| Content changes frequently, needs DB          | Server (`server.ts`)                       |
+| Content is mostly static, generate-and-deploy | Static generator (`scripts/static_build.ts`) |
+| Needs real-time features, WebSockets, API     | Server (`server.ts`)                       |
+| Needs maximum performance, zero server cost   | Static generator (`scripts/static_build.ts`) |
+
+## Routing & Rendering
+
+- [Route system](https://github.com/reepolee/reepolee/blob/main/lib/route_builder.ts): RouteDef registration - supports handler, methods, resource (sub-route table), crud (auto-mounted sub-routes), nav_title_key, module scoping, and is_menu_entry flag.
+- [Route map / URL localization](https://github.com/reepolee/reepolee/blob/main/lib/route_map.ts): O(1) canonical ↔ localized URL resolution for all languages using pre-built Maps built at app start.
+- [Middlewares](https://github.com/reepolee/reepolee/blob/main/lib/middleware): Composable middleware stack - set_lang, with_session, with_toasts, with_lang, require_auth_mw, require_module_mw, timing, cors, compose.
+- [Render system](https://github.com/reepolee/reepolee/blob/main/lib/render.ts): `render()` function returning HTML Response with automatic context injection (lang, user, toasts, URL), live reload in dev, and script/style hoisting to `<head>`.
+- [Template engine](https://github.com/reepolee/reepolee/blob/main/lib/template_engine.ts): File-based compiler compiling .ree files to async functions. Supports layouts, includes with path aliases (`$components/`, `$routes/`, `$lib/`), language-specific template variants, and caching in production.
+- [Template helpers](https://github.com/reepolee/reepolee/blob/main/lib/template_helpers.ts): Built-in helpers - yes_no, locale_date, locale_time, locale_ts, display_currency, display_percent, iso_date, url, localized_path, is_current, plural, format_bulk_delete_message.
+- [Translations / i18n](https://github.com/reepolee/reepolee/blob/main/lib/i18n.ts): JSON-based translation files per route, automatically merged with fallback filling. Sync with `bun run sync:languages`.
+- [Request context](https://github.com/reepolee/reepolee/blob/main/lib/request_context.ts): Creates immutable request context object with lang, user, toasts, prefix, locale, route_dir, preferred_lang, and request_url.
+- [Temporal utilities](https://github.com/reepolee/reepolee/blob/main/lib/temporal.ts): Timezone-aware date/datetime formatting helpers using `Temporal` API (Bun-native).
+
+## Prerequisites & Services
+
+### System binaries (must be pre-installed)
+
+| Tool                               | Purpose                                                                           | Where used                               |
+| ---------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------- |
+| **libvips** (`vips`, `vipsheader`) | Image processing (crop, resize, sharpen, format conversion to jpeg/png/webp/avif) | `lib/image_processor.ts`, avatar uploads |
+| **Bun**                            | Runtime - the entire project runs on Bun                                          | Everything                               |
+
+Note: libvips is required even though `Bun.Image()` exists - `vips` is needed for crop operations that Bun's native API doesn't expose.
+
+### Globally installed CLI tools (via `bun get:pre`)
+
+`bun get:pre` installs these globally with `bun add -g`:
+
+| Tool                  | Purpose                                                                          |
+| --------------------- | -------------------------------------------------------------------------------- |
+| **@tailwindcss/cli**  | Tailwind v4 CSS compilation (`css:watch`, `css:once`, `css:build`)               |
+| **concurrently**      | Parallel process runner for `dev` / `devw` scripts                               |
+| **oxlint**            | Linter (`.oxlintrc.json`) - installed but not in automated scripts               |
+
+Formatting is handled by **reettier** (`reettier.jsonc`) - a standalone Rust binary that formats
+`.ree`/`.ts`/`.js`/`.css` with no Node/dprint/biome runtime deps. Installed separately from the
+[reepolee/reettier](https://github.com/reepolee/reettier) GitHub releases (or built from source), not via `bun add -g`.
+
+### Vendored packages (no npm install needed at runtime)
+
+Downloaded via `bun get:pre` scripts into `vendor/` and imported via `$vendor/` path alias. Zero runtime npm dependencies.
+
+| Package                          | Source            | Local path                    | Purpose                                                            |
+| -------------------------------- | ----------------- | ----------------------------- | ------------------------------------------------------------------ |
+| **Zod v4.3.6**                   | jsDelivr CDN      | `vendor/zod.min.js`           | Runtime schema validation                                          |
+| **highlight.js v11.11.1**        | jsDelivr CDN      | `vendor/highlight.min.js`     | Code syntax highlighting                                           |
+| **@js-temporal/polyfill v0.5.1** | npm → Bun bundler | `vendor/temporal.bundle.js`   | Temporal API polyfill (bundled via `vendor/temporal/package.json`) |
+| **Alien Signals v2.0.7**         | jsDelivr CDN      | `public/alien-signals.min.js` | Reactive signals (client-side)                                     |
+
+These are committed to the repo - no npm install or CDN fetch needed after setup.
+
+### External services (all optional, configured via `.env`)
+
+| Service                 | When needed                                                       | Env var                              |
+| ----------------------- | ----------------------------------------------------------------- | ------------------------------------ |
+| **MySQL** or **SQLite** | Required (one of them)                                            | `CONNECTION_STRING`                  |
+| **Redis / Valkey**      | Optional - queue worker, session store, feature flags             | `REDIS_URL`                          |
+| **S3 / MinIO**          | Optional - image/avatar storage (falls back to local disk)        | `S3_HOSTNAME`, `S3_PORT`, `S3_*`     |
+| **SMTP**                | Optional - email delivery                                         | `SMTP_HOST`, `SMTP_PORT`, `SMTP_*`   |
+| **OpenRouter**          | Optional - AI translation (primary provider)                      | `OPENROUTER_KEY`, `OPENROUTER_MODEL` |
+| **Ollama**              | Optional - local LLM translation (takes priority over OpenRouter) | `OLLAMA_URL`, `OLLAMA_MODEL`         |
+| **HuggingFace**         | Optional - fallback translation provider                          | `HF_TOKEN`, `HF_URL`, `HF_MODEL`     |
+
+## Commands
+
+- **Development**: `bun dev` (tailwind watch + hot server), `bun run development` (server only).
+- **CSS**: `bun run css:watch`, `bun run css:once`, `bun run css:build` (minified).
+- **Production**: `bun start` (production mode), `bun run release` (minified CSS + npm version bump), `bun run production` (force-push to production branch).
+- **Testing & formatting**: `bun test`, `bun test:watch`, `bun run format` (reettier), `bun run versions` (package listing).
+- **Preview & SSG**: `bun run preview` (preview generated site), `bun run ssg` (static generation + sitemap + RSS generation).
+- **Static generation**: `bun scripts/ssg.ts [--public ./src/public] [--dist ./dist] [--base-url /] [--site-url https://example.com] [--verbose]`.
+- **Translations**: `bun run sync:languages`, `bun run add:language`.
+- **MCP server**: `bun run mcp` (runs [scripts/mcp-server.ts](https://github.com/reepolee/reepolee/blob/main/scripts/mcp-server.ts)).
+
+## Generators
+
+All generators live in `generator/` and are run via `bun generator/<name>.ts`.
+
+- [Resource generator](https://github.com/reepolee/reepolee/blob/main/generator/resource.ts): Orchestrates the full schema+CRUD pipeline. Supports `schema`, `crud`, `all`, `refresh` commands with `--force`, `--translate`, and `--prefix` flags.
+- [Schema generator](https://github.com/reepolee/reepolee/blob/main/generator/schema.ts): Introspects database tables and generates `table.generated.ts`, `table.ts`, and `validation-server.ts` in a `schema/` subfolder.
+- [CRUD generator](https://github.com/reepolee/reepolee/blob/main/generator/crud.ts): Reads schema files and generates full CRUD routes - `index.ts`, `sql.ts`, `form.ree`, `index.ree`, translation files, and route registration.
+- [Field generator](https://github.com/reepolee/reepolee/blob/main/generator/schema/field_generator.ts): Type-aware field generation from database column introspection. Produces input components (text, textarea, select, checkbox, date, datetime, tags, foreign_key).
+- [Validation generator](https://github.com/reepolee/reepolee/blob/main/generator/validation_generator.ts): Generates Zod validation schemas with codecs for dates, datetimes, timestamps, and empty-string handling.
+- [Translation sync](https://github.com/reepolee/reepolee/blob/main/generator/sync_translations.ts): Syncs translation keys across all language files, optionally translates missing keys via OpenRouter AI.
+- [AI translation](https://github.com/reepolee/reepolee/blob/main/generator/translator.ts): OpenRouter AI-powered translation provider with `--translate` flag support.
+- [TUI table browser](https://github.com/reepolee/reepolee/blob/main/generator/tui.ts): Interactive terminal UI to inspect database tables and fields.
+- [User generator](https://github.com/reepolee/reepolee/blob/main/generator/user.ts): Creates a new user with hashed password.
+- [Add language](https://github.com/reepolee/reepolee/blob/main/generator/add_language.ts): Adds a new language to the project.
+- [Extract keys](https://github.com/reepolee/reepolee/blob/main/generator/extract_keys.ts): Extracts translation keys from HTML/REE templates.
+- [Simple route](https://github.com/reepolee/reepolee/blob/main/generator/simple-route/): Skeleton for simple non-CRUD route generation.
+- [Simple page](https://github.com/reepolee/reepolee/blob/main/generator/simple-page/): Skeleton for static site page generation.
+
+## Template Reference (.ree files)
+
+- [Full template engine reference](https://github.com/reepolee/reepolee/blob/main/REE_TEMPLATES.md): Complete documentation of all template tags, helpers, layouts, includes, components, path resolution, and troubleshooting.
+- [Template engine compiler](https://github.com/reepolee/reepolee/blob/main/lib/template_engine.ts): Core compiler implementation - supports escaped output `{= expr }`, raw HTML `{~ expr }`, translation lookups `{_ path }` (escaped) / `{- path }` (raw HTML) / `{@ path }` (markdown), raw JS `{{ code }}`, control flow `{#if}`/`{#each}`, layouts `{#layout()}`, includes `{#include()}`.
+- [Template helpers](https://github.com/reepolee/reepolee/blob/main/lib/template_helpers.ts): Reusable helpers - yes_no, locale_date, locale_time, locale_ts, display_currency, display_percent, iso_date, url, localized_path, is_current, plural, format_bulk_delete_message.
+- [Template test suite](https://github.com/reepolee/reepolee/blob/main/lib/template_engine.test.ts): Comprehensive tests covering all template features, edge cases, and error conditions.
+- [Render module](https://github.com/reepolee/reepolee/blob/main/lib/render.ts): High-level render API - `render()` returns HTML Response, `get_render()` returns raw render function. Automatic language detection, user context, and toast notifications.
+
+## Database
+
+- [Database config](https://github.com/reepolee/reepolee/blob/main/config/db.ts): Swappable backend - MySQL or SQLite via Bun SQL API. Schema initialized from SQL files on every start. Switch by swapping config imports.
+- [MySQL schema](https://github.com/reepolee/reepolee/blob/main/init-mysql.sql): Full MySQL schema with sessions, modules, authors, languages, frameworks, partners, images, users tables + views.
+- [SQLite schema](https://github.com/reepolee/reepolee/blob/main/init-sqlite.sql): Equivalent SQLite schema.
+- [DB structure conventions](https://github.com/reepolee/reepolee/blob/main/config/db_structure.ts): Column naming conventions - boolean prefixes (`is_`, `has_`), date suffixes (`_at`, `_on`), ignored tables/fields, maintenance field detection.
+- [DB type resolver](https://github.com/reepolee/reepolee/blob/main/lib/resolve_db_type.ts): Auto-detects mysql vs sqlite from CONNECTION_STRING.
+
+## System Modules
+
+- [Auth module](https://github.com/reepolee/reepolee/blob/main/routes/system/auth): Login, logout, register (invite-only), profile editing, password change, avatar upload, session management with SQL/Redis stores.
+- [Image management](https://github.com/reepolee/reepolee/blob/main/routes/system/images): S3/image bucket upload, drag-and-drop, image editor (crop, resize, rotate), Web Component editor.
+- [Queue management](https://github.com/reepolee/reepolee/blob/main/routes/system/queues): Background job queue monitoring UI.
+- [User management](https://github.com/reepolee/reepolee/blob/main/routes/system/users): Admin user management CRUD.
+- [System translations](https://github.com/reepolee/reepolee/blob/main/routes/system/translations): Language-specific translation overrides for system routes.
+
+## Optional / Reference
+
+- [Bun Redis client reference](https://bun.sh/docs/api/redis): Bun's built-in Redis client API for session store (alternative to SQL store).
+- [Bun SQL API reference](https://bun.sh/docs/runtime/sql): Bun's built-in SQL API used for all database access - supports MySQL and SQLite.
+- [Bun SQL guide](https://bun.sh/docs/runtime/sql#statements): SQL statement API - prepared statements, parameters, streaming, transactions.
+- [Temporal API reference](https://tc39.es/proposal-temporal/docs): TC39 Temporal proposal used for timezone-aware date/time handling (Bun-native).
+- [Zod validation reference](https://zod.dev): Runtime validation library used for form validation (vendored at `vendor/zod.min.js`).
+- [Tailwind CSS v4](https://tailwindcss.com/docs): CSS framework for styling (standalone CLI, not a bundler plugin).

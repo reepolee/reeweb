@@ -1,0 +1,28 @@
+{#layout("layout")}
+
+<div class="blog-index">
+	<h1 class="text-4xl font-black">{_ nav.blog}</h1>
+
+	{#if props.records}
+		<ul class="post-list">
+			{#each props.records as post}
+				<li class="post-item">
+					<h2 class="text-lg font-bold">
+						<a href="{~ localized_path(post.canonical_path) }">{= post.title}</a>
+					</h2>
+					{#if post.description}
+						<p>{= post.description}</p>
+					{/if}
+				</li>
+			{/each}
+		</ul>
+	{/if}
+
+	{#if props.pagination}
+		{#if props.pagination_variant === 'simple'}
+			<simple-pagination data="{= props.pagination }" per-page="2"></simple-pagination>
+		{:else}
+			<full-pagination data="{= props.pagination }" per-page="2"></full-pagination>
+		{/if}
+	{/if}
+</div>

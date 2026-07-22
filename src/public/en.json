@@ -1,0 +1,41 @@
+{
+	"nav": {
+		"about": "About",
+		"blog": "Blog",
+		"contact": "Contact",
+		"home": "Home"
+	},
+	"route_name": "",
+	"site_name": "My Static Site",
+	"ui": {
+		"feature_1_text": "Full i18n support with automatic fallback. Each page renders in every language you configure.",
+		"feature_1_title": "Multi-Language",
+		"feature_2_text": "Built entirely on Bun's native APIs. No bundlers, no build tools, no npm install needed for the core.",
+		"feature_2_title": "Zero Dependencies",
+		"feature_3_text": "Use shared layouts, components, and per-route translations. Language-variant templates for full control.",
+		"feature_3_title": "Flexible Templates",
+		"language_names": {
+			"en": "English",
+			"sl": "Slovenian"
+		},
+		"language_names_to": {
+			"en": "English",
+			"sl": "Slovenian"
+		},
+		"learn_more": "Learn More →",
+		"pagination": {
+			"label": "Pagination",
+			"next": "Next",
+			"of": "of",
+			"previous": "Previous",
+			"results": "results",
+			"showing": "Showing",
+			"to": "to",
+			"total_label": "total"
+		},
+		"welcome_text": "A blazing-fast multi-language static site built with Bun and .ree templates.",
+		"welcome_title": "Welcome to My Static Site",
+		"starwars_title": "Birth Years of Star Wars Characters",
+		"team_title": "Our Team"
+	}
+}

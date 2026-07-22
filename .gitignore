@@ -1,0 +1,49 @@
+# dependencies (bun install)
+node_modules
+*.db*
+.commandcode/
+.pi/
+*.pem
+nul 
+
+# output
+out
+dist
+*.tgz
+static/avatars
+static/app-dev.css
+
+# engine drift diff output
+engine_drift.diff
+
+# generated responsive images (rebuilt from assets/images by scripts/prepare_images.ts)
+src/public/images/responsive/
+			
+# code coverage
+coverage
+*.lcov
+
+# logs
+logs
+_.log
+report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
+
+# dotenv environment variable files
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+
+# caches
+.eslintcache
+.cache
+*.tsbuildinfo
+.server.pid 
+
+# IntelliJ based IDEs
+.idea
+
+# Finder (MacOS) folder config
+.DS_Store
+.wrangler

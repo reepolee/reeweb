@@ -1,0 +1,114 @@
+{{
+	// full-pagination - numbered paginator (reconstruction of Laravel tailwind paginator).
+	// See REE_TEMPLATES.md / docs for usage. It is a custom element: the tag name
+	// has a hyphen, and the PaginationData object arrives via the data attribute,
+	// with an optional on-each-side attribute to window the page numbers (omit to
+	// show all). Do not put markup-like tokens in these comments - the engine
+	// preprocessor scans comment text too.
+	const p = props.attributes ? props.attributes.data : null;
+	// Parse the on-each-side attribute (a string). Omitted/blank → null → show all.
+	const oes_raw = props.attributes ? props.attributes["on-each-side"] : null;
+	let on_each_side = null;
+	if (oes_raw !== null && oes_raw !== undefined && oes_raw !== "") {
+		const parsed = parseInt(oes_raw, 10);
+		on_each_side = Number.isNaN(parsed) ? null : parsed;
+	}
+	const has_data = !!p;
+	const visible = has_data && (p.has_pages || p.show_when_single_page);
+	const labels = has_data ? p.labels : {};
+	// build_window - mirror of lib/pagination.ts (the .ree engine has no imports).
+	// Keep in sync; lib/pagination.test.ts is the source of truth for behaviour.
+	function build_window(pages, current, last, n) {
+		if (n === null || n === undefined || Number.isNaN(n)) return pages.slice();
+		const wanted = new Set([1, last]);
+		for(let i = current - n; i <= current + n; i++){
+			if (i >= 1 && i <= last) wanted.add(i);
+		}
+		const sorted = Array.from(wanted).sort((a, b) => a - b);
+		const items = [];
+		let prev = 0;
+		for (const pg of sorted){
+			const gap = pg - prev;
+			if (gap === 2) items.push(pages[prev]);
+			else if (gap > 2) items.push({ ellipsis: true });
+			items.push(pages[pg - 1]);
+			prev = pg;
+		}
+		return items;
+	}
+	const items = visible ? build_window(p.pages, p.current_page, p.last_page, on_each_side) : [];
+	const show_prev = visible && (p.prev_url || p.always_show_prev_next);
+	const show_next = visible && (p.next_url || p.always_show_prev_next);
+	const link_base = "relative inline-flex items-center px-4 py-2 text-sm font-medium border border-neutral-300 bg-white text-neutral-700 transition hover:bg-neutral-50 focus:z-20";
+	const link_active = "relative z-10 inline-flex items-center px-4 py-2 text-sm font-medium border border-brand bg-brand text-white";
+	const link_disabled = "relative inline-flex items-center px-4 py-2 text-sm font-medium border border-neutral-200 bg-white text-neutral-400 cursor-default";
+}}
+{#if visible}
+	<nav
+		role="navigation"
+		aria-label="{= labels.aria }"
+		class="flex items-center justify-between border-t border-neutral-200 pt-4">
+		<!-- Mobile: previous / next only -->
+		<div class="flex flex-1 justify-between sm:hidden">
+			{#if p.prev_url}
+				<a href="{~ p.prev_url }" rel="prev" class="{~ link_base } rounded-md">{= labels.previous}</a>
+			{:else}
+				{#if p.always_show_prev_next}
+					<span aria-disabled="true" class="{~ link_disabled } rounded-md">{= labels.previous}</span>
+				{/if}
+			{/if}
+			{#if p.next_url}
+				<a href="{~ p.next_url }" rel="next" class="{~ link_base } ml-3 rounded-md">{= labels.next}</a>
+			{:else}
+				{#if p.always_show_prev_next}
+					<span aria-disabled="true" class="{~ link_disabled } ml-3 rounded-md">{= labels.next}</span>
+				{/if}
+			{/if}
+		</div>
+
+		<!-- Desktop: summary + numbered links -->
+		<div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+			<p class="text-sm text-neutral-600">
+				{= labels.showing}
+				<span class="font-medium">{= p.from}</span>
+				{= labels.to}
+				<span class="font-medium">{= p.to}</span>
+				(
+				<span class="font-medium">{= p.total}</span>
+				{= labels.results}
+				{= labels.total_label}
+				)
+			</p>
+
+			<span class="isolate inline-flex -space-x-px rounded-md shadow-sm">
+				{#if show_prev}
+					{#if p.prev_url}
+						<a href="{~ p.prev_url }" rel="prev" aria-label="{= labels.previous }" class="{~ link_base } rounded-l-md">‹</a>
+					{:else}
+						<span aria-disabled="true" aria-label="{= labels.previous }" class="{~ link_disabled } rounded-l-md">‹</span>
+					{/if}
+				{/if}
+
+				{#each items as it}
+					{#if it.ellipsis}
+						<span aria-disabled="true" class="{~ link_disabled }">…</span>
+					{:else}
+						{#if it.active}
+							<span aria-current="page" class="{~ link_active }">{= it.number}</span>
+						{:else}
+							<a href="{~ it.url }" class="{~ link_base }">{= it.number}</a>
+						{/if}
+					{/if}
+				{/each}
+
+				{#if show_next}
+					{#if p.next_url}
+						<a href="{~ p.next_url }" rel="next" aria-label="{= labels.next }" class="{~ link_base } rounded-r-md">›</a>
+					{:else}
+						<span aria-disabled="true" aria-label="{= labels.next }" class="{~ link_disabled } rounded-r-md">›</span>
+					{/if}
+				{/if}
+			</span>
+		</div>
+	</nav>
+{/if}

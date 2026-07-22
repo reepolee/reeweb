@@ -1,0 +1,32 @@
+{{
+	// <responsive-image>: a responsive <picture> built from the width-stepped
+	// WebP + JPEG variants emitted by scripts/prepare_images.ts. The srcset widths
+	// come from config/responsive_images.ts via the srcset() helper (lib/images.ts).
+	//
+	// Props (also accepted as attributes):
+	//   src          base image URL, e.g. "/images/responsive/hero.png"
+	//   alt          alt text
+	//   class        extra classes for the <picture>
+	//   image_class  extra classes for the <img>
+	//   sizes        the <img>/<source> sizes attribute
+	//   loading      "lazy" (default) | "eager"
+	const a = props.attributes || {};
+	const _src = props.src || a.src || "";
+	const _alt = props.alt || a.alt || "";
+	const _class = a.class || props.class || "";
+	const _image_class = a.image_class || props.image_class || "";
+	const _sizes = a.sizes || props.sizes || "(max-width: 640px) 300px, (max-width: 1680px) 800px, 1440px";
+	const _loading = a.loading || props.loading || "lazy";
+	const final_class = tw_merge("w-full", _class);
+	const final_image_class = tw_merge("w-full object-cover", _image_class);
+}}
+<picture class="{= final_class }" aria-disabled="true">
+	<!-- AVIF disabled: the Bun.Image build pipeline (scripts/prepare_images.ts) does
+	     not emit .avif files, and <picture> does not fall back when a chosen <source>
+	     404s. Re-enable this line together with AVIF generation in the script.
+	<source type="image/avif" srcset="{~ srcset(_src, 'avif') }" sizes="{= _sizes }" />
+	-->
+	<source type="image/webp" srcset="{~ srcset(_src, 'webp') }" sizes="{= _sizes }" />
+	<source srcset="{~ srcset(_src, 'jpeg') }" sizes="{= _sizes }" />
+	<img src="{= _src }" alt="{= _alt }" loading="{= _loading }" class="{= final_image_class }" />
+</picture>

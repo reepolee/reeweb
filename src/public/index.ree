@@ -1,0 +1,48 @@
+{#layout("layout")}
+
+<div class="hero">
+	<h1>{_ ui.welcome_title}</h1>
+	<p class="lead">{_ ui.welcome_text}</p>
+	<a href="{~ localized_path('/about') }" class="btn">{_ ui.learn_more}</a>
+</div>
+
+<div class="features">
+	<div class="feature-card">
+		<h3>{_ ui.feature_1_title}</h3>
+		<p>{_ ui.feature_1_text}</p>
+	</div>
+	<div class="feature-card">
+		<h3>{_ ui.feature_2_title}</h3>
+		<p>{_ ui.feature_2_text}</p>
+	</div>
+	<div class="feature-card">
+		<h3>{_ ui.feature_3_title}</h3>
+		<p>{_ ui.feature_3_text}</p>
+	</div>
+</div>
+
+
+<div class="grid grid-cols-2 gap-8">
+	<div class="data-section">
+		<h2>{@ ui.starwars_title}</h2>
+		{#if props.starwars_characters && props.starwars_characters.length > 0}
+			<ul class="list-disc list-inside">
+				{#each props.starwars_characters as person}
+					<li>{= person.name}, {= person.birth_year}</li>
+				{/each}
+			</ul>
+		{/if}
+	</div>
+
+
+	<div class="data-section">
+		<h2>{_ ui.team_title}</h2>
+		{#if props.team && props.team.length > 0}
+			<ul class="list-disc list-inside">
+				{#each props.team as person}
+					<li>{= person.name}</li>
+				{/each}
+			</ul>
+		{/if}
+	</div>
+</div>

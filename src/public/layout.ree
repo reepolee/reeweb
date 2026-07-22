@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="{= props.lang }">
+
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<link rel="stylesheet" href="/css/style.min.css?v={= props.version}" />
+		<title>{= props.title || props.translations?.ui?.title || props.site_name}</title>
+		{#if props.canonical_url}
+			<link rel="canonical" href="{~ props.canonical_url }" />
+		{/if}
+		{#if props.noindex}
+			<meta name="robots" content="noindex" />
+		{/if}
+		{#if props.canonical_path && (props.canonical_path === '/blog' || props.canonical_path.startsWith('/blog/'))}
+			<link rel="alternate" type="application/rss+xml" title="{= props.site_name } RSS" href="{= (props.lang_url_prefix || '') }/blog/feed.xml" />
+			<link rel="alternate" type="application/feed+json" title="{= props.site_name } JSON Feed" href="{= (props.lang_url_prefix || '') }/blog/feed.json" />
+		{/if}
+		{#each props.hreflang_links as link}
+			<link rel="alternate" hreflang="{= link.lang }" href="{~ link.href }" />
+		{/each}
+		<speculation-rules></speculation-rules>
+	</head>
+
+	<body>
+		<header class="site-header">
+			<div class="container">
+				<a href="{~ localized_path('/') }" class="logo">{= props.site_name}</a>
+
+				<nav>
+					<a href="{~ localized_path('/') }">{_ nav.home}</a>
+					<a href="{~ localized_path('/about') }">{_ nav.about}</a>
+					<a href="{~ localized_path('/contact') }">{_ nav.contact}</a>
+					<a href="{~ localized_path('/blog') }">{_ nav.blog}</a>
+					<a href="{~ localized_path('/docs') }">Docs</a>
+				</nav>
+
+				<site-search placeholder="Search…"></site-search>
+
+				<div class="lang-switcher">
+					{#each props.active_languages as l}
+						<a href="{~ localized_path_for_lang(l, props.canonical_path) }" class="{= props.lang === l ? 'active' : '' }">{= props.language_self_names[l]}</a>
+					{/each}
+				</div>
+			</div>
+		</header>
+
+		<main>
+			{#if props.sidebar}
+				<div class="docs-layout">
+					<aside class="docs-sidebar">
+						<nav>
+							{#each props.sidebar as link}
+								<a href="{= link.url }" class="{= link.active ? 'active' : '' }">{= link.title}</a>
+							{/each}
+						</nav>
+					</aside>
+					<div class="docs-main">{~ props.body}</div>
+				</div>
+			{:else}
+				{~ props.body}
+			{/if}
+		</main>
+
+		<footer>
+			<div class="container">
+				<p>&copy; {= props.year} {= props.site_name}. All rights reserved.</p>
+			</div>
+		</footer>
+
+		<script src="/js/site-search.js?v={= props.version}" defer></script>
+
+		{#if props.is_dev}
+			<browser-data></browser-data>
+			<script src="/js/browser-data.js?v={= props.version}" defer></script>
+		{/if}
+	</body>
+
+</html>

@@ -1,0 +1,102 @@
+{{
+	/**
+	 * Cmd/Ctrl+K search dialog.
+	 *
+	 * Drop `<site-search></site-search>` into a layout, once per page. Fetching,
+	 * scoring and result rendering live in /js/site-search.js, which reads the
+	 * source list from the #search-sites JSON block below; the index itself comes
+	 * from `bun ssg:search` (scripts/generate_search_index.ts).
+	 *
+	 * Attributes:
+	 *   placeholder  Input placeholder text (default: "Search…")
+	 *   label        Accessible name for the dialog and input
+	 *   local        Prefix of the source to search first, for a site split into
+	 *                several indexes. Defaults to "" (the whole-site index).
+	 *   sources      JSON array of { prefix, brand } for a multi-index site,
+	 *                matching `sources` in config/search.ts. Omit it on a
+	 *                single-index site: the client then searches `local` alone
+	 *                and renders one ungrouped list.
+	 */
+	const { placeholder, label, local, sources, ...rest } = props.attributes;
+	const search_placeholder = placeholder || "Search…";
+	const search_label = label || "Search this site";
+	const local_prefix = local || "";
+	const sources_json = sources || "[]";
+}}
+
+<button
+	type="button"
+	data-search-trigger
+	aria-label="{= search_label}"
+	class="flex cursor-pointer items-center gap-2 rounded-lg border border-neutral-300 px-3 py-1.5 text-base text-neutral-500 transition-colors hover:bg-neutral-100"
+	...rest>
+	<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+	<span>{= search_placeholder}</span>
+</button>
+
+<script type="application/json" id="search-sites">{~ sources_json}</script>
+{{
+	/**
+	 * A native <dialog> opened with showModal(), so the browser promotes it to
+	 * the top layer. That is deliberate: the component has to work wherever it
+	 * is dropped, including inside a `position: sticky` header, which creates a
+	 * stacking context that would otherwise trap any z-index the dialog set.
+	 *
+	 * `text-neutral-900` is likewise explicit rather than inherited - mounted in
+	 * a dark header, the dialog would otherwise inherit white text onto its own
+	 * light panel.
+	 */
+}}
+<dialog
+	id="search-modal"
+	aria-label="{= search_label}"
+	data-search-local="{= local_prefix}"
+	class="bg-bg-card mx-auto mt-[15vh] w-full max-w-lg overflow-hidden rounded-xl border border-neutral-300 p-0 text-neutral-900 shadow-2xl backdrop:bg-black/50 backdrop:backdrop-blur-sm">
+	<div class="relative">
+		<svg class="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+		<input id="search-input" type="search" placeholder="{= search_placeholder}" aria-label="{= search_label}" aria-controls="search-results" aria-autocomplete="list" class="w-full border-0 border-b border-neutral-300 bg-transparent py-4 pr-4 pl-12 text-lg text-neutral-900 placeholder:text-neutral-500" autocomplete="off" />
+	</div>
+	<div id="search-results" class="max-h-[50vh] overflow-y-auto" role="listbox"></div>
+	<div id="search-status" class="px-4 py-3 text-base text-neutral-500">Type to search…</div>
+</dialog>
+
+<script>
+	// Open/close only. Result rendering lives in /js/site-search.js.
+	// showModal() gives us the top layer, the focus trap, Escape-to-close and
+	// inert page content for free, so none of that is reimplemented here.
+	(function () {
+		const modal = document.getElementById("search-modal");
+		const input = document.getElementById("search-input");
+		if (!modal || !input) return;
+
+		function open_search() {
+			if (modal.open) return;
+			modal.showModal();
+			document.documentElement.style.overflow = "hidden";
+			queueMicrotask(() => input.focus());
+		}
+
+		// Restoring focus to the trigger is native too: the dialog remembers it.
+		modal.addEventListener("close", () => {
+			document.documentElement.style.overflow = "";
+		});
+
+		document.querySelectorAll("[data-search-trigger]").forEach((trigger) => {
+			trigger.addEventListener("click", open_search);
+		});
+
+		// Clicks land on the dialog itself only when they miss the panel content,
+		// which is the backdrop area.
+		modal.addEventListener("click", (e) => {
+			if (e.target === modal) modal.close();
+		});
+
+		document.addEventListener("keydown", (e) => {
+			if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+				e.preventDefault();
+				if (modal.open) modal.close();
+				else open_search();
+			}
+		});
+	})();
+</script>

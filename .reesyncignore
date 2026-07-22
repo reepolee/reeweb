@@ -1,0 +1,14 @@
+# .reesyncignore - clone-owned files that reesync should NOT pull from the
+# template by default. Each line is a glob (globset syntax) matched against the
+# project-root-relative path. Matched files are shown but pre-unchecked and
+# dimmed in the reesync TUI - you can still check one for a deliberate one-off.
+#
+# Press `i` in reesync to add/remove the highlighted file here (exact lines
+# only; edit this file by hand for glob patterns).
+
+# Project identity and deploy config - each clone owns these.
+package.json
+wrangler.jsonc
+
+# Compiled / project-specific styles.
+src/css/**

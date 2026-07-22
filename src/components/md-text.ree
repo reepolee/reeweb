@@ -1,0 +1,31 @@
+{{
+// Port of the <MdText> and <Markdown> components.
+		// Renders a short string of inline markdown inside a chosen element with
+		// the size/heading classes the reference site used.
+		// type="code" instead runs the content through the same filter as real .md
+		// doc pages (md_code) - .ree pages have no client-side highlighter, so
+		// fenced code blocks need this to get server-side hljs highlighting.
+		const _type = props.type || (props.attributes && props.attributes.type) || "";
+		const _as = props.as || (props.attributes && props.attributes.as) || "div";
+		const _class = props.class || (props.attributes && props.attributes.class) || "";
+		const _text = props.text || (props.attributes && props.attributes.text) || props.children || "";
+		const _id = props.id || (props.attributes && props.attributes.id) || "";
+		const _id_attr = _id ? ' id="' + _id + '"' : "";
+
+		if (_type === "code") {
+	__output += "<" + _as + _id_attr + (_class ? ' class="' + _class + '"' : "") + ">" + md_code(_text) + "</" + _as + ">";
+	} else {
+	const heading_classes = {
+	h1: "heading text-balance text-5xl sm:text-6xl lg:text-7xl",
+	h2: "heading text-balance text-4xl lg:text-5xl",
+	h3: "heading text-balance text-2xl lg:text-3xl",
+	"text-sm": "text-balance text-sm lg:text-base",
+	text: "text-balance text-lg",
+	"text-lg": "text-balance text-xl lg:text-2xl",
+	"text-xl": "heading text-balance text-3xl lg:text-4xl",
+	};
+	const merged = tw_merge(heading_classes[_type] || "", _class);
+	const final_class = merged === "" ? "prose" : merged + " prose";
+__output += "<" + _as + _id_attr + ' class="' + final_class + '">' + md(_text) + "</" + _as + ">";
+}
+}}
