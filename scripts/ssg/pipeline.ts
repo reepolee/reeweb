@@ -140,7 +140,7 @@ export async function run_ssg(options: BuildOptions = parse_args()): Promise<{ r
 		views: public_dir,
 		ext: ".ree",
 		cache: false,
-		autoEscape: true,
+		auto_escape: true,
 	});
 
 	// 3. Walk public/ and split into renderable templates vs static assets.

@@ -16,8 +16,8 @@ describe("MCP template paths", () => {
 		expect(resolve_template_file("src/public/docs/index.md")).toEndWith(
 			to_native("src/public/docs/index.md")
 		);
-		expect(resolve_template_file("src/components/banner.ree")).toEndWith(
-			to_native("src/components/banner.ree")
+		expect(resolve_template_file("src/components/my-h1.ree")).toEndWith(
+			to_native("src/components/my-h1.ree")
 		);
 	});
 
@@ -28,7 +28,7 @@ describe("MCP template paths", () => {
 			"src/public/index.ts",
 			"package.json",
 			"/etc/passwd",
-			"src\\components\\banner.ree",
+			"src\\components\\my-h1.ree",
 			"lib/template_engine.ts",
 		]) { expect(() => resolve_template_file(path)).toThrow(); }
 	});

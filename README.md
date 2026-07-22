@@ -181,7 +181,6 @@ Any HTML attribute on the ReeTag becomes a prop in the component:
 |   `-- template_helpers.ts       # Date formatting, navigation, display
 |-- src/
 |   |-- components/               # Reusable ReeTag .ree components
-|   |   |-- banner.ree
 |   |   |-- full-pagination.ree
 |   |   |-- md-text.ree
 |   |   |-- my-h1.ree

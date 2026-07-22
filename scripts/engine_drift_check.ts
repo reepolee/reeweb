@@ -4,7 +4,7 @@
  *
  * The .ree template engine (lib/template_engine.ts, lib/template/*, and the
  * engine test) is upstream code shared with the reepolee app template (a
- * sibling checkout, e.g. ../reepolee). reeweb's AGENTS.md says lib/ is upstream
+ * sibling checkout, e.g. ../reepolee-dev). AGENTS.md says lib/ is upstream
  * and must not be edited here; this script enforces that as a checked
  * invariant instead of a convention.
  *
@@ -16,8 +16,9 @@
  * trailing commas. Two files with identical behaviour produce equal
  * fingerprints regardless of comments or wrapping.
  *
- * Canonical repo lookup order: $REEPOLEE_DIR, then ../reepolee, then
- * ../reepolee. If none is found the check is skipped (exit 0) - not every
+ * Canonical repo lookup order: $REEPOLEE_DIR, then ../reepolee-dev (where
+ * Reepolee is developed), then ../reepolee (the public release sibling).
+ * If none is found the check is skipped (exit 0) - not every
  * environment has the sibling checkout.
  *
  * Usage: bun run engine:check [--verbose|-v]
@@ -54,15 +55,28 @@ const VERBOSE = Bun.argv.includes("--verbose") || Bun.argv.includes("-v");
 
 const root = resolve(import.meta.dir, "..");
 
+/**
+ * A canonical checkout and which kind it is.
+ *
+ * Reepolee is developed in `reepolee-dev` and published from the `reepolee`
+ * sibling. Only distributable files are copied to the release checkout - working
+ * files (tests, internals) stay in the development repo - so a release checkout
+ * is a subset, not a second source of truth. Prefer the development repo, and
+ * when only a release checkout is available, treat files it does not carry as
+ * "not distributed" rather than as drift.
+ */
+type Canonical = { dir: string; kind: "dev" | "release"; };
+
 /** Locate the canonical (upstream) checkout, or null if none is present. */
-function find_canonical_repo(): string | null {
-	const candidates = [
-		Bun.env.REEPOLEE_DIR,
-		resolve(root, "..", "reepolee"),
-		resolve(root, "..", "reepolee"),
+function find_canonical_repo(): Canonical | null {
+	const candidates: Canonical[] = [
+		// An explicit override is assumed to be a full development checkout.
+		...(Bun.env.REEPOLEE_DIR ? [{ dir: Bun.env.REEPOLEE_DIR, kind: "dev" as const }] : []),
+		{ dir: resolve(root, "..", "reepolee-dev"), kind: "dev" },
+		{ dir: resolve(root, "..", "reepolee"), kind: "release" },
 	];
-	for (const dir of candidates) {
-		if (dir && existsSync(resolve(dir, "lib", "template_engine.ts"))) { return dir; }
+	for (const candidate of candidates) {
+		if (existsSync(resolve(candidate.dir, "lib", "template_engine.ts"))) { return candidate; }
 	}
 	return null;
 }
@@ -85,20 +99,29 @@ async function main() {
 	const canonical = find_canonical_repo();
 	if (!canonical) {
 		info(
-			"No canonical reepolee checkout found (set REEPOLEE_DIR or place ../reepolee). Skipping engine drift check."
+			"No canonical reepolee checkout found (set REEPOLEE_DIR, or place ../reepolee-dev or ../reepolee). Skipping engine drift check."
 		);
 		process.exit(0);
 	}
 
-	console.log(`\n${BOLD}Engine drift check${RESET}  ${DIM}(canonical: ${canonical})${RESET}`);
+	console.log(`\n${BOLD}Engine drift check${RESET}  ${DIM}(canonical: ${canonical.dir} [${canonical.kind}])${RESET}`);
 
 	const drifted: string[] = [];
 	const missing: string[] = [];
+	const not_distributed: string[] = [];
 	const diff_sections: string[] = [];
 
 	for (const rel of SHARED_ENGINE_FILES) {
 		const local_path = resolve(root, "lib", rel);
-		const canonical_path = resolve(canonical, "lib", rel);
+		const canonical_path = resolve(canonical.dir, "lib", rel);
+
+		// A release checkout only carries distributables, so a file it lacks is
+		// expected rather than drift. Compare against a dev checkout to cover these.
+		if (!existsSync(canonical_path) && canonical.kind === "release") {
+			not_distributed.push(rel);
+			info(`${rel}: not distributed to the release checkout - skipped`);
+			continue;
+		}
 
 		if (!existsSync(local_path) || !existsSync(canonical_path)) {
 			missing.push(rel);
@@ -149,7 +172,13 @@ async function main() {
 
 	console.log();
 	if (drifted.length === 0 && missing.length === 0) {
-		ok(`${SHARED_ENGINE_FILES.length} engine file(s) match canonical`);
+		const compared = SHARED_ENGINE_FILES.length - not_distributed.length;
+		ok(`${compared} engine file(s) match canonical`);
+		if (not_distributed.length > 0) {
+			info(
+				`${not_distributed.length} file(s) skipped - not distributed to a release checkout. Compare against ../reepolee-dev to cover them.`
+			);
+		}
 		process.exit(0);
 	}
 

@@ -204,10 +204,10 @@ export async function get_project_config(): Promise<Record<string, any>> {
 // Read project files
 // ---------------------------------------------------------------------------
 
-export async function read_project_file(filePath: string): Promise<string | null> {
-	const absPath = join(PROJECT_ROOT, filePath);
-	if (!existsSync(absPath)) return null;
-	return await file(absPath).text();
+export async function read_project_file(file_path: string): Promise<string | null> {
+	const abs_path = join(PROJECT_ROOT, file_path);
+	if (!existsSync(abs_path)) return null;
+	return await file(abs_path).text();
 }
 
 // ---------------------------------------------------------------------------
@@ -236,34 +236,34 @@ export function analyze_template(tpl: string): Record<string, any> {
 		translation_keys: new Set(),
 		conditionals: 0,
 		loops: 0,
-		hasElse: false,
+		has_else: false,
 	};
 
-	const layoutMatch = tpl.match(/\{#layout\(['"]([^'"]+)['"]/);
-	if (layoutMatch) result.layout = layoutMatch[1];
+	const layout_match = tpl.match(/\{#layout\(['"]([^'"]+)['"]/);
+	if (layout_match) result.layout = layout_match[1];
 
-	const includeRegex = /\{#include\(['"]([^'"]+)['"]/g;
+	const include_regex = /\{#include\(['"]([^'"]+)['"]/g;
 	let m;
-	while ((m = includeRegex.exec(tpl)) !== null) {
+	while ((m = include_regex.exec(tpl)) !== null) {
 		const include = m[1] as string;
 		if (!include.startsWith("$components/")) { result.includes.push(include); }
 	}
 
-	const compRegex = /<([a-zA-Z][a-zA-Z0-9]*-[a-zA-Z0-9-]*)\b/g;
-	while ((m = compRegex.exec(tpl)) !== null) {
+	const comp_regex = /<([a-zA-Z][a-zA-Z0-9]*-[a-zA-Z0-9-]*)\b/g;
+	while ((m = comp_regex.exec(tpl)) !== null) {
 		result.components.push(m[1]);
 	}
 
-	const ifRegex = /\{#if\s+/g;
-	while (ifRegex.exec(tpl) !== null) result.conditionals++;
-	const elseRegex = /\{:else\s*\}/g;
-	while (elseRegex.exec(tpl) !== null) result.hasElse = true;
+	const if_regex = /\{#if\s+/g;
+	while (if_regex.exec(tpl) !== null) result.conditionals++;
+	const else_regex = /\{:else\s*\}/g;
+	while (else_regex.exec(tpl) !== null) result.has_else = true;
 
-	const eachRegex = /\{#each\s+/g;
-	while (eachRegex.exec(tpl) !== null) result.loops++;
+	const each_regex = /\{#each\s+/g;
+	while (each_regex.exec(tpl) !== null) result.loops++;
 
-	const varRegex = /\{[=~]\s*([\w.]+(?:\.[\w]+)*)\s*\}/g;
-	while ((m = varRegex.exec(tpl)) !== null) {
+	const var_regex = /\{[=~]\s*([\w.]+(?:\.[\w]+)*)\s*\}/g;
+	while ((m = var_regex.exec(tpl)) !== null) {
 		const ref = m[1] as string;
 		if (!ref.includes("(")) {
 			const parts = ref.split(".");
@@ -272,13 +272,13 @@ export function analyze_template(tpl: string): Record<string, any> {
 	}
 
 	// Translation lookup tags: {_ path } (escaped), {- path } (raw), {@ path } (markdown).
-	const trRegex = /\{[_@-]\s*([\w.]+)\s*\}/g;
-	while ((m = trRegex.exec(tpl)) !== null) {
+	const tr_regex = /\{[_@-]\s*([\w.]+)\s*\}/g;
+	while ((m = tr_regex.exec(tpl)) !== null) {
 		result.translation_keys.add(m[1]);
 	}
 
-	const propsVarRegex = /\bprops\.([\w]+)\b/g;
-	while ((m = propsVarRegex.exec(tpl)) !== null) {
+	const props_var_regex = /\bprops\.([\w]+)\b/g;
+	while ((m = props_var_regex.exec(tpl)) !== null) {
 		result.variables.add(`props.${m[1]}`);
 	}
 
@@ -307,15 +307,15 @@ export async function search_code(pattern: string, glob?: string, maxResults = 5
 
 	for (const line of lines) {
 		if (total >= maxResults) break;
-		const sepIndex = line.indexOf(":");
-		if (sepIndex < 0) continue;
-		const file = line.slice(0, sepIndex);
-		const rest = line.slice(sepIndex + 1);
-		const lineSepIndex = rest.indexOf(":");
-		const lineNum = parseInt(rest.slice(0, lineSepIndex), 10);
-		const content = rest.slice(lineSepIndex + 1);
-		if (!Number.isNaN(lineNum)) {
-			matches.push({ file: file.replace(`${PROJECT_ROOT}/`, ""), line: lineNum, content });
+		const sep_index = line.indexOf(":");
+		if (sep_index < 0) continue;
+		const file = line.slice(0, sep_index);
+		const rest = line.slice(sep_index + 1);
+		const line_sep_index = rest.indexOf(":");
+		const line_num = parseInt(rest.slice(0, line_sep_index), 10);
+		const content = rest.slice(line_sep_index + 1);
+		if (!Number.isNaN(line_num)) {
+			matches.push({ file: file.replace(`${PROJECT_ROOT}/`, ""), line: line_num, content });
 			total++;
 		}
 	}

@@ -19,7 +19,7 @@ describe("analyze_template", () => test("extracts layout, components, variables,
 	expect(result.translation_keys).toEqual(["ui.empty", "ui.welcome_title"]);
 	expect(result.conditionals).toBe(1);
 	expect(result.loops).toBe(1);
-	expect(result.hasElse).toBe(true);
+	expect(result.has_else).toBe(true);
 }));
 
 describe("list_pages", () => test("lists real project pages with canonical routes", () => {

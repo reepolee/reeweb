@@ -143,7 +143,7 @@ if (!is_first_run) {
 		views: public_dir,
 		ext: ".ree",
 		cache: false,
-		autoEscape: true,
+		auto_escape: true,
 		project_root,
 	});
 	const sidebar_map = await build_dev_sidebar_map(state);

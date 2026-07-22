@@ -1,9 +1,10 @@
 /**
  * Custom element pre-processor - extracted from TemplateEngine.compile().
  *
- * Handles two pre-processing steps that run before the main compiler pass:
+ * Handles three pre-processing steps that run before the main compiler pass:
  * 1. HTML comment stripping:  <!-- ... --> is removed so directives inside comments are NOT compiled
  * 2. Custom HTML element shorthand:  <tag-name attr="val">SLOT</tag-name> -> \u0000R\u0000 marker (resolved by compile_to_code)
+ * 3. Spread shorthand:  <div ...rest> -> <div {~ key_values(rest) }> (see expand_spread_shorthand)
  */
 
 import { existsSync } from "node:fs";
@@ -46,8 +47,8 @@ function translation_lookup_expr(path: string): string {
  * 4. Spread shorthand: ...identifier - emits a JS spread operator in the object literal,
  *    e.g. <my-h1 ...p class="foo"> → attributes: { ...p, "class": "foo" }
  */
-export function parse_attributes(attrStr: string): string {
-	if (!attrStr?.trim()) return "";
+export function parse_attributes(attr_str: string): string {
+	if (!attr_str?.trim()) return "";
 	const parts: string[] = [];
 
 	// First, extract spread tokens (e.g. ...p, ...rest).
@@ -59,18 +60,18 @@ export function parse_attributes(attrStr: string): string {
 	// shorthand conversion (which matches bare ...identifier -> {~ key_values(id)})
 	// from matching inside the NUL-bounded ReeTag marker payload.
 	// ...(identifier) is valid JS - the parens are just an expression wrapper.
-	const spreadRegex = /\.\.\.([A-Za-z_$][\w$]*)/g;
+	const spread_regex = /\.\.\.([A-Za-z_$][\w$]*)/g;
 	let sm: RegExpExecArray | null;
-	while ((sm = spreadRegex.exec(attrStr)) !== null) {
+	while ((sm = spread_regex.exec(attr_str)) !== null) {
 		parts.push(`...(${sm[1]})`);
 	}
 
 	// Remove spread tokens before parsing regular attributes
-	const cleanedAttrStr = attrStr.replace(spreadRegex, "").trim();
+	const cleaned_attr_str = attr_str.replace(spread_regex, "").trim();
 
-	const attrRegex = /([a-zA-Z_][a-zA-Z0-9_-]*)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'))?/g;
+	const attr_regex = /([a-zA-Z_][a-zA-Z0-9_-]*)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'))?/g;
 	let m: RegExpExecArray | null;
-	while ((m = attrRegex.exec(cleanedAttrStr)) !== null) {
+	while ((m = attr_regex.exec(cleaned_attr_str)) !== null) {
 		const name = m[1];
 		const value = m[2] !== undefined ? m[2] : m[3] !== undefined ? m[3] : true;
 		if (value === true) {
@@ -92,9 +93,100 @@ export function parse_attributes(attrStr: string): string {
 	return parts.join(", ");
 }
 
-export type PreprocessResult = { template: string; slotFns: CompiledFn[]; };
+/**
+ * Expand `...identifier` written as an HTML attribute into the attributes it
+ * stands for: `<div class="x" ...rest>` -> `<div class="x" {~ key_values(rest) }>`.
+ *
+ * Hyphenated tags get this from the two branches in preprocess_template, which
+ * only see custom elements. A component that renders a plain element - a <div>
+ * wrapper, say - had no expansion at all, so `...rest` reached the browser as a
+ * literal attribute.
+ *
+ * The spread token is only meaningful in an HTML attribute position, and the
+ * identical JS syntax is common everywhere else, so the scan skips the places
+ * a spread means something else:
+ *   - {{ ... }} blocks, where `const { type, ...rest } = ...` destructures
+ *   - <script> bodies, where `[...list]` is ordinary JS
+ *   - quoted attribute values, where `{= f(...args) }` may appear
+ *   - ReeTag markers from step 2, whose payload is generated JS (those spreads
+ *     are already emitted as `...(identifier)`, which this deliberately misses)
+ *
+ * {{ ... }} is scanned non-greedily to the first "}}", matching the main
+ * compiler's tokenizer, so both agree on where a JS block ends.
+ */
+export function expand_spread_shorthand(template: string): string {
+	const MARKER_PREFIX = "\u0000R\u0000";
+	const SCRIPT_CLOSE = "</script>";
+	let out = "";
+	let i = 0;
+	const n = template.length;
 
-export function preprocess_template(template: string, viewsDir: string, ext: string, compileSlot: (content: string) => CompiledFn): PreprocessResult {
+	while (i < n) {
+		// ReeTag marker from step 2: \u0000R\u0000<tag>\u0000<slot_id>\u0000<props_obj>\u0000
+		if (template.startsWith(MARKER_PREFIX, i)) {
+			let seen = 0;
+			let j = i + MARKER_PREFIX.length;
+			while (j < n && seen < 3) {
+				if (template[j] === "\u0000") seen++;
+				j++;
+			}
+			out += template.slice(i, j);
+			i = j;
+			continue;
+		}
+
+		if (template.startsWith("{{", i)) {
+			const close = template.indexOf("}}", i + 2);
+			const stop = close === -1 ? n : close + 2;
+			out += template.slice(i, stop);
+			i = stop;
+			continue;
+		}
+
+		if (/^<script\b/i.test(template.slice(i, i + 8))) {
+			const close = template.toLowerCase().indexOf(SCRIPT_CLOSE, i);
+			const stop = close === -1 ? n : close + SCRIPT_CLOSE.length;
+			out += template.slice(i, stop);
+			i = stop;
+			continue;
+		}
+
+		// An HTML start tag - expand spreads in the attribute region, leaving
+		// quoted values alone.
+		if (template[i] === "<" && /[a-zA-Z]/.test(template[i + 1] ?? "")) {
+			let j = i;
+			let in_str: string | null = null;
+			let tag = "";
+			while (j < n) {
+				const ch = template[j];
+				if (in_str) {
+					if (ch === in_str) in_str = null;
+				} else if (ch === "\"" || ch === "'") {
+					in_str = ch;
+				} else if (ch === ">") {
+					tag += ch;
+					j++;
+					break;
+				}
+				tag += ch;
+				j++;
+			}
+			// Only the unquoted regions can hold a spread token.
+			out += tag.replace(/("[^"]*"|'[^']*')|\.\.\.([A-Za-z_$][\w$]*)/g, (_m, quoted, id) => quoted ?? `{~ key_values(${id}) }`);
+			i = j;
+			continue;
+		}
+
+		out += template[i];
+		i++;
+	}
+
+	return out;
+}
+
+export type PreprocessResult = { template: string; slot_fns: CompiledFn[]; };
+
+export function preprocess_template(template: string, views_dir: string, ext: string, compile_slot: (content: string) => CompiledFn): PreprocessResult {
 	// Step 1: Strip HTML comments
 	// Remove <!-- ... --> before any directive processing, so that
 	// {= }, {~ }, {#if}, etc. inside comments are NOT evaluated.
@@ -102,81 +194,86 @@ export function preprocess_template(template: string, viewsDir: string, ext: str
 	// crashing on missing columns/fields at render time.
 	template = template.replace(/<!--[\s\S]*?-->/g, "");
 
-	const slotFns: CompiledFn[] = [];
+	const slot_fns: CompiledFn[] = [];
 
 	// Step 2: Process custom HTML elements
 	// <tag-name attr1="val1">SLOT</tag-name>
-	// -> \u0000R\u0000<tag-name>\u0000<slotId>\u0000<propsObj>\u0000
+	// -> \u0000R\u0000<tag-name>\u0000<slot_id>\u0000<props_obj>\u0000
 	// (resolved by compile_to_code into a __rtInclude call)
 	//
 	// If the tag has a matching component file under components/, it becomes a
 	// component call. If not, it's passed through as a native HTML element.
-	const custElemRegex = /<([a-zA-Z][a-zA-Z0-9]*-[a-zA-Z0-9-]*)(?:\s([^>]*?))?\s*>([\s\S]*?)<\/\1>/g;
-	let processedTemplate = template;
+	const cust_elem_regex = /<([a-zA-Z][a-zA-Z0-9]*-[a-zA-Z0-9-]*)(?:\s([^>]*?))?\s*>([\s\S]*?)<\/\1>/g;
+	let processed_template = template;
 
 	while (true) {
-		custElemRegex.lastIndex = 0;
-		const match = custElemRegex.exec(processedTemplate);
+		cust_elem_regex.lastIndex = 0;
+		const match = cust_elem_regex.exec(processed_template);
 		if (!match) break;
 
-		const tagName = match[1];
-		const attrStr = match[2] ?? "";
-		const slotContent = match[3];
+		const tag_name = match[1];
+		const attr_str = match[2] ?? "";
+		const slot_content = match[3];
 
 		// Check if a matching component file exists under components/
-		const projectRoot = dirname(viewsDir);
-		const componentFilePath = join(projectRoot, "components", tagName + ext);
-		const componentExists = existsSync(componentFilePath);
+		const project_root = dirname(views_dir);
+		const component_file_path = join(project_root, "components", tag_name + ext);
+		const component_exists = existsSync(component_file_path);
 
-		if (componentExists) {
+		if (component_exists) {
 			// Component found -> emit a NUL-bounded ReeTag marker that
 			// compile_to_code resolves to a direct __rtInclude call. We use a
 			// NUL marker instead of {#include(...)} because the directive
 			// regex can't parse balanced-brace data expressions.
-			// Format: \u0000R\u0000<tagName>\u0000<slotId>\u0000<propsObj>\u0000
-			const slotId = slotFns.length;
+			// Format: \u0000R\u0000<tag_name>\u0000<slot_id>\u0000<props_obj>\u0000
+			const slot_id = slot_fns.length;
 
 			// Recursively compile the slot content as a standalone template
-			const slotCompiledFn = compileSlot(slotContent);
-			slotFns.push(slotCompiledFn);
+			const slot_compiled_fn = compile_slot(slot_content);
+			slot_fns.push(slot_compiled_fn);
 
-			const attrs = parse_attributes(attrStr);
-			const childrenExpr = `children: await __run_slot(${slotId}, props, __escape, __include, __rtInclude, __currentName)`;
-			const propsObj = attrs ? `{${childrenExpr}, attributes: {${attrs}}}` : `{${childrenExpr}}`;
+			const attrs = parse_attributes(attr_str);
+			const children_expr = `children: await __run_slot(${slot_id}, props, __escape, __include, __rtInclude, __currentName)`;
+			const props_obj = attrs ? `{${children_expr}, attributes: {${attrs}}}` : `{${children_expr}}`;
 
-			const marker = `\u0000R\u0000${tagName}\u0000${slotId}\u0000${propsObj}\u0000`;
-			processedTemplate = processedTemplate.slice(0, match.index) + marker + processedTemplate.slice(
+			const marker = `\u0000R\u0000${tag_name}\u0000${slot_id}\u0000${props_obj}\u0000`;
+			processed_template = processed_template.slice(0, match.index) + marker + processed_template.slice(
 				match.index + match[0].length
 			);
 		} else {
 			// No component file - pass through as a native HTML element.
-			const tagNameJson = JSON.stringify(tagName);
+			const tag_name_json = JSON.stringify(tag_name);
 
 			// Handle spread tokens (e.g. ...p, ...rest) in the attribute string.
 			// Extract them and generate key_values() calls in the output so the
 			// object's properties become HTML attributes at render time.
-			const spreadRegex = /\.\.\.([A-Za-z_$][\w$]*)/g;
-			const spreadIds: string[] = [];
-			const cleanedAttrStr = attrStr.replace(spreadRegex, (_match: string, id: string) => {
-				spreadIds.push(id);
+			const spread_regex = /\.\.\.([A-Za-z_$][\w$]*)/g;
+			const spread_ids: string[] = [];
+			const cleaned_attr_str = attr_str.replace(spread_regex, (_match: string, id: string) => {
+				spread_ids.push(id);
 				return "";
 			}).trim();
 
 			// Build the attribute output: key_values() calls for each spread,
 			// then literal attrs. Spreads come first (matching component case ordering).
-			const attrParts: string[] = [];
-			for (const id of spreadIds) {
-				attrParts.push(`" " + key_values(${id})`);
+			const attr_parts: string[] = [];
+			for (const id of spread_ids) {
+				attr_parts.push(`" " + key_values(${id})`);
 			}
-			if (cleanedAttrStr) { attrParts.push(JSON.stringify(` ${cleanedAttrStr}`)); }
-			const attrOutput = attrParts.length > 0 ? attrParts.join(" + ") : JSON.stringify("");
+			if (cleaned_attr_str) { attr_parts.push(JSON.stringify(` ${cleaned_attr_str}`)); }
+			const attr_output = attr_parts.length > 0 ? attr_parts.join(" + ") : JSON.stringify("");
 
-			const replacement = `{{ __output += "<" + ${tagNameJson} + ${attrOutput} + ">"; }}${slotContent}{{ __output += "</" + ${tagNameJson} + ">"; }}`;
-			processedTemplate = processedTemplate.slice(0, match.index) + replacement + processedTemplate.slice(
+			const replacement = `{{ __output += "<" + ${tag_name_json} + ${attr_output} + ">"; }}${slot_content}{{ __output += "</" + ${tag_name_json} + ">"; }}`;
+			processed_template = processed_template.slice(0, match.index) + replacement + processed_template.slice(
 				match.index + match[0].length
 			);
 		}
 	}
 
-	return { template: processedTemplate, slotFns };
+	// Step 3: Spread shorthand on plain elements
+	// Runs after step 2 so ReeTag markers already exist and can be skipped -
+	// their payload spreads are emitted as ...(identifier) and stay untouched.
+	processed_template = expand_spread_shorthand(processed_template);
+
+	return { template: processed_template, slot_fns };
 }

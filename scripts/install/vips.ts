@@ -104,11 +104,11 @@ function add_to_user_path(dir: string) {
 	if (PLATFORM === "win32") {
 		const { execSync } = require("node:child_process");
 
-		const userPath = execSync(
+		const user_path = execSync(
 			`powershell -Command "[Environment]::GetEnvironmentVariable('Path','User')"`
 		).toString().trim();
 
-		if (!userPath.includes(dir)) {
+		if (!user_path.includes(dir)) {
 			execSync(
 				`powershell -Command "[Environment]::SetEnvironmentVariable('Path', $env:Path + ';${dir}', 'User')"`
 			);
@@ -227,15 +227,15 @@ async function install_windows(version: string) {
 	const arch = get_arch();
 	log(`Detected architecture: ${arch}`);
 
-	const zipPath = path.join(CACHE_DIR, `vips-${resolved_version}-${arch}.zip`);
+	const zip_path = path.join(CACHE_DIR, `vips-${resolved_version}-${arch}.zip`);
 
 	const url = pick_windows_asset(release.assets, arch);
 	log(`Resolved download URL:`);
 	log(url);
 
-	await download(url, zipPath);
+	await download(url, zip_path);
 
-	await extract(zipPath, INSTALL_DIR);
+	await extract(zip_path, INSTALL_DIR);
 	const src_bin = find_extracted_bin_dir(INSTALL_DIR, resolved_version);
 
 	cpSync(src_bin, BIN_DIR, { recursive: true });

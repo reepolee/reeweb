@@ -27,7 +27,7 @@ import type { CompiledFn } from "./types";
 interface BlockEntry {
 	type: "each" | "if" | "with";
 	id?: number;
-	hasElse: boolean;
+	has_else: boolean;
 }
 
 interface LayoutInfo {
@@ -36,8 +36,8 @@ interface LayoutInfo {
 }
 
 interface CompileState {
-	blockStack: BlockEntry[];
-	eachCounter: number;
+	block_stack: BlockEntry[];
+	each_counter: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -52,11 +52,11 @@ interface CompileState {
  * Returns the first argument (string name) and the optional second argument
  * (a JS expression for data). Returns null on parse failure.
  */
-function parse_call(s: string): { name: string; dataExpr: string; } | null {
-	const openParenIdx = s.indexOf("(");
-	if (openParenIdx < 0) return null;
+function parse_call(s: string): { name: string; data_expr: string; } | null {
+	const open_paren_idx = s.indexOf("(");
+	if (open_paren_idx < 0) return null;
 
-	let i = openParenIdx + 1;
+	let i = open_paren_idx + 1;
 	const n = s.length;
 
 	// Read first arg: quoted string
@@ -91,46 +91,46 @@ function parse_call(s: string): { name: string; dataExpr: string; } | null {
 	if (i < n && s[i] === ",") {
 		i++; // skip comma
 		while (i < n && /\s/.test(s[i])) i++;
-		let depthParen = 0, depthBrace = 0, depthBracket = 0;
-		let inStr: string | null = null;
+		let depth_paren = 0, depth_brace = 0, depth_bracket = 0;
+		let in_str: string | null = null;
 		let esc = false;
 		let expr = "";
 		while (i < n) {
 			const ch = s[i++];
 			expr += ch;
 
-			if (inStr) {
+			if (in_str) {
 				if (esc) {
 					esc = false;
 				} else if (ch === "\\") {
 					esc = true;
-				} else if (ch === inStr) {
-					inStr = null;
+				} else if (ch === in_str) {
+					in_str = null;
 				}
 				continue;
 			}
 
 			if (ch === "\"" || ch === "'" || ch === "`") {
-				inStr = ch;
+				in_str = ch;
 				continue;
 			}
 
-			if (ch === "(") depthParen++; else if (ch === ")") {
-				if (depthParen === 0 && depthBrace === 0 && depthBracket === 0) {
+			if (ch === "(") depth_paren++; else if (ch === ")") {
+				if (depth_paren === 0 && depth_brace === 0 && depth_bracket === 0) {
 					// This ')' closes the directive
 					expr = expr.slice(0, -1); // drop this ')'
-					const dataExpr = expr.trim() || "{}";
-					return { name, dataExpr };
+					const data_expr = expr.trim() || "{}";
+					return { name, data_expr };
 				}
-				depthParen--;
-			} else if (ch === "{") depthBrace++; else if (ch === "}") depthBrace--; else if (ch === "[") depthBracket++; else if (ch === "]") depthBracket--;
+				depth_paren--;
+			} else if (ch === "{") depth_brace++; else if (ch === "}") depth_brace--; else if (ch === "[") depth_bracket++; else if (ch === "]") depth_bracket--;
 		}
 		return null; // no closing paren
 	} else {
 		// No second arg: expect ')'
 		while (i < n && /\s/.test(s[i])) i++;
 		if (i >= n || s[i] !== ")") return null;
-		return { name, dataExpr: "{}" };
+		return { name, data_expr: "{}" };
 	}
 }
 
@@ -145,22 +145,22 @@ function parse_call(s: string): { name: string; dataExpr: string; } | null {
 function scan_balanced_tag(s: string, start: number): { content: string; end: number; } | null {
 	// s[start] === "{", s[start + 1] is the prefix char
 	let depth = 1;
-	let inStr: string | null = null;
+	let in_str: string | null = null;
 	let esc = false;
 	let i = start + 2;
 	const n = s.length;
 	while (i < n) {
 		const ch = s[i];
-		if (inStr) {
+		if (in_str) {
 			if (esc) {
 				esc = false;
 			} else if (ch === "\\") {
 				esc = true;
-			} else if (ch === inStr) {
-				inStr = null;
+			} else if (ch === in_str) {
+				in_str = null;
 			}
 		} else if (ch === "\"" || ch === "'" || ch === "`") {
-			inStr = ch;
+			in_str = ch;
 		} else if (ch === "{") {
 			depth++;
 		} else if (ch === "}") {
@@ -187,86 +187,86 @@ function emit_text(text: string): string { return `__output += ${JSON.stringify(
 /**
  * Emit raw JS code block from {{ ... }}.
  */
-function emit_code_block(rawJS: string): string { return `${rawJS}\n`; }
+function emit_code_block(raw_js: string): string { return `${raw_js}\n`; }
 
 /**
  * Handle {#layout(...)} - stores layout info for post-processing.
  * Returns the LayoutInfo or null if parsing fails.
  */
-function handle_layout(trimmedCall: string): LayoutInfo {
-	const parsed = parse_call(trimmedCall);
+function handle_layout(trimmed_call: string): LayoutInfo {
+	const parsed = parse_call(trimmed_call);
 	if (!parsed) {
 		throw new Error(
-			`Invalid layout syntax: "{#${trimmedCall}}". Expected {#layout('path'[, data])}`,
+			`Invalid layout syntax: "{#${trimmed_call}}". Expected {#layout('path'[, data])}`,
 		);
 	}
-	return { name: parsed.name, data: parsed.dataExpr || "{}" };
+	return { name: parsed.name, data: parsed.data_expr || "{}" };
 }
 
 /**
  * Handle {#include(...)} - emits an include call.
  */
-function emit_include(trimmedCall: string): string {
-	const parsed = parse_call(trimmedCall);
+function emit_include(trimmed_call: string): string {
+	const parsed = parse_call(trimmed_call);
 	if (!parsed) {
 		throw new Error(
-			`Invalid include syntax: "{#${trimmedCall}}". Expected {#include('path'[, data])}`,
+			`Invalid include syntax: "{#${trimmed_call}}". Expected {#include('path'[, data])}`,
 		);
 	}
-	const partialName = parsed.name;
-	const partialData = parsed.dataExpr || "{}";
-	return `__output += await __rtInclude(${JSON.stringify(partialName)}, Object.assign({}, props, ${partialData}));\n`;
+	const partial_name = parsed.name;
+	const partial_data = parsed.data_expr || "{}";
+	return `__output += await __rtInclude(${JSON.stringify(partial_name)}, Object.assign({}, props, ${partial_data}));\n`;
 }
 
 /**
  * Handle {#each ... as ...} - emits the JS for loop setup.
  */
-function emit_each_open(trimmedContent: string, state: CompileState): string {
-	const eachMatch = trimmedContent.match(
+function emit_each_open(trimmed_content: string, state: CompileState): string {
+	const each_match = trimmed_content.match(
 		/^each\s+(.*?)\s+as\s+([A-Za-z_$][\w$]*)(?:\s*,\s*([A-Za-z_$][\w$]*))?(?:\s*,\s*([A-Za-z_$][\w$]*))?\s*$/
 	);
-	if (!eachMatch) {
+	if (!each_match) {
 		throw new Error(
-			`Invalid #each syntax: "{#each ${trimmedContent}}". Expected "{#each <listExpr> as <item>[, index][, key] }"`,
+			`Invalid #each syntax: "{#each ${trimmed_content}}". Expected "{#each <list_expr> as <item>[, index][, key] }"`,
 		);
 	}
-	const listExpr = eachMatch[1];
-	const itemVar = eachMatch[2];
-	const indexVar = eachMatch[3];
-	const keyVar = eachMatch[4];
+	const list_expr = each_match[1];
+	const item_var = each_match[2];
+	const index_var = each_match[3];
+	const key_var = each_match[4];
 
-	const id = state.eachCounter++;
-	state.blockStack.push({ type: "each", id, hasElse: false });
+	const id = state.each_counter++;
+	state.block_stack.push({ type: "each", id, has_else: false });
 
-	return `\n{\n  const __src_${id} = (${listExpr});\n  const __isArr_${id} = Array.isArray(__src_${id});\n  const __keys_${id} = __isArr_${id}\n    ? Array.from({ length: __src_${id} ? __src_${id}.length : 0 }, (_, i) => i)\n    : (__src_${id} && typeof __src_${id} === "object" ? Object.keys(__src_${id}) : []);\n\n  if (__keys_${id}.length > 0) {\n    for (let __i_${id} = 0; __i_${id} < __keys_${id}.length; __i_${id}++) {\n      const __k_${id} = __keys_${id}[__i_${id}];\n      const ${itemVar} = __src_${id} ? __src_${id}[__k_${id}] : undefined;\n      ${indexVar ? `const ${indexVar} = __i_${id};` : ""}\n      ${keyVar ? `const ${keyVar} = __k_${id};` : ""}\n`;
+	return `\n{\n  const __src_${id} = (${list_expr});\n  const __isArr_${id} = Array.isArray(__src_${id});\n  const __keys_${id} = __isArr_${id}\n    ? Array.from({ length: __src_${id} ? __src_${id}.length : 0 }, (_, i) => i)\n    : (__src_${id} && typeof __src_${id} === "object" ? Object.keys(__src_${id}) : []);\n\n  if (__keys_${id}.length > 0) {\n    for (let __i_${id} = 0; __i_${id} < __keys_${id}.length; __i_${id}++) {\n      const __k_${id} = __keys_${id}[__i_${id}];\n      const ${item_var} = __src_${id} ? __src_${id}[__k_${id}] : undefined;\n      ${index_var ? `const ${index_var} = __i_${id};` : ""}\n      ${key_var ? `const ${key_var} = __k_${id};` : ""}\n`;
 }
 
 /**
  * Handle {#with ...} - emits the JS with() block setup.
  */
-function emit_with_open(trimmedContent: string, state: CompileState): string {
-	const expr = trimmedContent.replace(/^with\b/, "").trim();
+function emit_with_open(trimmed_content: string, state: CompileState): string {
+	const expr = trimmed_content.replace(/^with\b/, "").trim();
 	if (!expr) {
 		throw new Error(
-			`Invalid #with syntax: "{#with ${trimmedContent}}". Expected "{#with <expr> }"`,
+			`Invalid #with syntax: "{#with ${trimmed_content}}". Expected "{#with <expr> }"`,
 		);
 	}
-	const id = state.eachCounter++;
-	state.blockStack.push({ type: "with", id, hasElse: false });
+	const id = state.each_counter++;
+	state.block_stack.push({ type: "with", id, has_else: false });
 	return `\n{\n  const __with$${id} = (${expr});\n  with (__with$${id}) {\n`;
 }
 
 /**
  * Handle {#if ...} - emits the JS if() block setup.
  */
-function emit_if_open(trimmedContent: string, state: CompileState): string {
-	const cond = trimmedContent.replace(/^if\b/, "").trim();
+function emit_if_open(trimmed_content: string, state: CompileState): string {
+	const cond = trimmed_content.replace(/^if\b/, "").trim();
 	if (!cond) {
 		throw new Error(
-			`Invalid #if syntax: "{#if ${trimmedContent}}". Expected "{#if <condition> }"`,
+			`Invalid #if syntax: "{#if ${trimmed_content}}". Expected "{#if <condition> }"`,
 		);
 	}
-	state.blockStack.push({ type: "if", hasElse: false });
+	state.block_stack.push({ type: "if", has_else: false });
 	return `\n{\n  let __if_result;\n  try { __if_result = (${cond}); } catch (__if_e) { __if_result = undefined; }\n  if (__if_result) {\n`;
 }
 
@@ -274,15 +274,15 @@ function emit_if_open(trimmedContent: string, state: CompileState): string {
  * Handle {:else} - emits the else branch code.
  */
 function emit_else(state: CompileState): string {
-	if (state.blockStack.length === 0) {
+	if (state.block_stack.length === 0) {
 		throw new Error("Unexpected {:else} without an open {#if} or {#each} block");
 	}
-	if (state.blockStack[state.blockStack.length - 1].type === "with") {
+	if (state.block_stack[state.block_stack.length - 1].type === "with") {
 		throw new Error("{:else} is not allowed inside {#with} blocks");
 	}
-	const current = state.blockStack[state.blockStack.length - 1]!;
-	if (current.hasElse) { throw new Error("Multiple {:else} in the same block are not allowed"); }
-	current.hasElse = true;
+	const current = state.block_stack[state.block_stack.length - 1]!;
+	if (current.has_else) { throw new Error("Multiple {:else} in the same block are not allowed"); }
+	current.has_else = true;
 
 	if (current.type === "each") {
 		return `
@@ -302,11 +302,11 @@ function emit_else(state: CompileState): string {
  * Handle {/each} - closes an each block.
  */
 function emit_close_each(state: CompileState): string {
-	if (state.blockStack.length === 0 || state.blockStack[state.blockStack.length - 1].type !== "each") {
+	if (state.block_stack.length === 0 || state.block_stack[state.block_stack.length - 1].type !== "each") {
 		throw new Error("Unexpected {/each} without a matching {#each}");
 	}
-	const blk = state.blockStack.pop()!;
-	if (blk.hasElse) {
+	const blk = state.block_stack.pop()!;
+	if (blk.has_else) {
 		return `
   }
 }
@@ -324,10 +324,10 @@ function emit_close_each(state: CompileState): string {
  * Handle {/with} - closes a with block.
  */
 function emit_close_with(state: CompileState): string {
-	if (state.blockStack.length === 0 || state.blockStack[state.blockStack.length - 1].type !== "with") {
+	if (state.block_stack.length === 0 || state.block_stack[state.block_stack.length - 1].type !== "with") {
 		throw new Error("Unexpected {/with} without a matching {#with}");
 	}
-	state.blockStack.pop();
+	state.block_stack.pop();
 	return `
   }
 }
@@ -338,10 +338,10 @@ function emit_close_with(state: CompileState): string {
  * Handle {/if} - closes an if block.
  */
 function emit_close_if(state: CompileState): string {
-	if (state.blockStack.length === 0 || state.blockStack[state.blockStack.length - 1].type !== "if") {
+	if (state.block_stack.length === 0 || state.block_stack[state.block_stack.length - 1].type !== "if") {
 		throw new Error("Unexpected {/if} without a matching {#if}");
 	}
-	state.blockStack.pop();
+	state.block_stack.pop();
 	return `
   }
 }
@@ -431,13 +431,13 @@ function emit_translation_lookup(prefix: string, content: string): string {
 /**
  * Compile a preprocessed template string into an async render function.
  *
- * @param processedTemplate - Template string after custom element and comment
+ * @param processed_template - Template string after custom element and comment
  * preprocessing.
- * @param slotFns           - Compiled slot functions for custom elements.
+ * @param slot_fns           - Compiled slot functions for custom elements.
  * @returns A CompiledFn that renders the template to HTML at runtime.
  */
-export function compile_template(processedTemplate: string, slotFns: CompiledFn[]): CompiledFn {
-	const { fn } = compile_to_code(processedTemplate, slotFns);
+export function compile_template(processed_template: string, slot_fns: CompiledFn[]): CompiledFn {
+	const { fn } = compile_to_code(processed_template, slot_fns);
 	return fn;
 }
 
@@ -445,37 +445,37 @@ export function compile_template(processedTemplate: string, slotFns: CompiledFn[
  * Compile and return both the generated JS code and the compiled function.
  * Useful for debugging, introspection, and the MCP server's compile_template tool.
  */
-export function compile_to_code(processedTemplate: string, slotFns: CompiledFn[]): { code: string; fn: CompiledFn; } {
+export function compile_to_code(processed_template: string, slot_fns: CompiledFn[]): { code: string; fn: CompiledFn; } {
 	// Resolve ReeTag markers emitted by the pre-processor. Each marker encodes
 	// the component tag name, slot id, and props object. We translate them to
 	// raw-JS markers (\u0000J\u0000...\u0000) that the main loop recognizes and
 	// emits via emit_code_block. Two-stage because the main loop's
 	// balanced-brace-agnostic regexes can't safely parse these data payloads.
 	// eslint-disable-next-line no-control-regex
-	processedTemplate = processedTemplate.replace(/\u0000R\u0000([^\u0000]+)\u0000(\d+)\u0000([\s\S]*?)\u0000/g, (_match, tagName, _slotId, propsObj) => {
-		const componentPath = `$components/${tagName}`;
-		const js = `__output += await __rtInclude(${JSON.stringify(componentPath)}, Object.assign({}, props, ${propsObj}));\n`;
+	processed_template = processed_template.replace(/\u0000R\u0000([^\u0000]+)\u0000(\d+)\u0000([\s\S]*?)\u0000/g, (_match, tag_name, _slotId, props_obj) => {
+		const component_path = `$components/${tag_name}`;
+		const js = `__output += await __rtInclude(${JSON.stringify(component_path)}, Object.assign({}, props, ${props_obj}));\n`;
 		return `\u0000J\u0000${js}\u0000\u0000`;
 	});
 
 	let code = "let __output = \"\";\n";
 	code += "const { user, is_dev, lang, csrf_token, helpers = {} } = props;\n";
-	let layoutResult: LayoutInfo | null = null;
+	let layout_result: LayoutInfo | null = null;
 
 	// eslint-disable-next-line no-control-regex
-	const combinedPattern = /\{\{([\s\S]*?)\}\}|\{([~=#:/_@-])\s*([\s\S]*?)\}|\u0000J\u0000([\s\S]*?)\u0000\u0000/g;
+	const combined_pattern = /\{\{([\s\S]*?)\}\}|\{([~=#:/_@-])\s*([\s\S]*?)\}|\u0000J\u0000([\s\S]*?)\u0000\u0000/g;
 
-	const state: CompileState = { blockStack: [], eachCounter: 0 };
+	const state: CompileState = { block_stack: [], each_counter: 0 };
 
-	let lastIndex = 0;
+	let last_index = 0;
 	let match: RegExpExecArray | null;
 
-	while ((match = combinedPattern.exec(processedTemplate)) !== null) {
+	while ((match = combined_pattern.exec(processed_template)) !== null) {
 		const index = match.index;
 
 		// Emit literal text between tags
-		if (index > lastIndex) {
-			const text = processedTemplate.slice(lastIndex, index);
+		if (index > last_index) {
+			const text = processed_template.slice(last_index, index);
 			code += emit_text(text);
 		}
 
@@ -488,71 +488,71 @@ export function compile_to_code(processedTemplate: string, slotFns: CompiledFn[]
 		} else if (match[2] !== undefined) {
 			// {prefix ... } - directive or output with explicit prefix
 			const prefix = match[2];
-			let rawContent = match[3]!;
+			let raw_content = match[3]!;
 
 			// The non-greedy regex stops at the first "}", truncating tags whose
 			// content contains braces (object literals in layout/include data,
 			// {= {a:1}.a }, etc.). Rescan with brace balancing and extend the
 			// match when the true closing brace is further out.
-			const balanced = scan_balanced_tag(processedTemplate, index);
-			if (balanced && balanced.end > combinedPattern.lastIndex) {
-				rawContent = balanced.content;
-				combinedPattern.lastIndex = balanced.end;
+			const balanced = scan_balanced_tag(processed_template, index);
+			if (balanced && balanced.end > combined_pattern.lastIndex) {
+				raw_content = balanced.content;
+				combined_pattern.lastIndex = balanced.end;
 			}
 
-			const trimmedContent = rawContent.trim();
+			const trimmed_content = raw_content.trim();
 
-			if (trimmedContent.startsWith("layout(") || trimmedContent.startsWith("include(")) {
-				const parenIdx = trimmedContent.indexOf("(");
-				const directiveName = trimmedContent.slice(0, parenIdx);
-				const directiveContent = trimmedContent.slice(parenIdx);
-				const trimmedCall = `${directiveName}${directiveContent}`;
+			if (trimmed_content.startsWith("layout(") || trimmed_content.startsWith("include(")) {
+				const paren_idx = trimmed_content.indexOf("(");
+				const directive_name = trimmed_content.slice(0, paren_idx);
+				const directive_content = trimmed_content.slice(paren_idx);
+				const trimmed_call = `${directive_name}${directive_content}`;
 
-				if (directiveName === "layout") {
-					layoutResult = handle_layout(trimmedCall);
-				} else if (directiveName === "include") {
-					code += emit_include(trimmedCall);
+				if (directive_name === "layout") {
+					layout_result = handle_layout(trimmed_call);
+				} else if (directive_name === "include") {
+					code += emit_include(trimmed_call);
 				}
-			} else if (prefix === "#" && trimmedContent.startsWith("each")) {
-				code += emit_each_open(trimmedContent, state);
-			} else if (prefix === "#" && /^with\b/.test(trimmedContent)) {
-				code += emit_with_open(trimmedContent, state);
-			} else if (prefix === "#" && /^if\b/.test(trimmedContent)) {
-				code += emit_if_open(trimmedContent, state);
-			} else if (prefix === ":" && trimmedContent === "else") {
+			} else if (prefix === "#" && trimmed_content.startsWith("each")) {
+				code += emit_each_open(trimmed_content, state);
+			} else if (prefix === "#" && /^with\b/.test(trimmed_content)) {
+				code += emit_with_open(trimmed_content, state);
+			} else if (prefix === "#" && /^if\b/.test(trimmed_content)) {
+				code += emit_if_open(trimmed_content, state);
+			} else if (prefix === ":" && trimmed_content === "else") {
 				code += emit_else(state);
-			} else if (prefix === "/" && trimmedContent === "each") {
+			} else if (prefix === "/" && trimmed_content === "each") {
 				code += emit_close_each(state);
-			} else if (prefix === "/" && trimmedContent === "with") {
+			} else if (prefix === "/" && trimmed_content === "with") {
 				code += emit_close_with(state);
-			} else if (prefix === "/" && trimmedContent === "if") {
+			} else if (prefix === "/" && trimmed_content === "if") {
 				code += emit_close_if(state);
 			} else if (prefix === "_" || prefix === "-" || prefix === "@") {
-				code += emit_translation_lookup(prefix, trimmedContent);
+				code += emit_translation_lookup(prefix, trimmed_content);
 			} else {
-				code += emit_expression(prefix, trimmedContent);
+				code += emit_expression(prefix, trimmed_content);
 			}
 		}
 
-		lastIndex = combinedPattern.lastIndex;
+		last_index = combined_pattern.lastIndex;
 	}
 
 	// Trailing literal text
-	if (lastIndex < processedTemplate.length) {
-		const text = processedTemplate.slice(lastIndex);
+	if (last_index < processed_template.length) {
+		const text = processed_template.slice(last_index);
 		code += emit_text(text);
 	}
 
 	// Ensure no unclosed blocks
-	if (state.blockStack.length > 0) {
-		const openTypes = state.blockStack.map((b) => b.type).join(", ");
-		throw new Error(`Unclosed block(s): ${openTypes}`);
+	if (state.block_stack.length > 0) {
+		const open_types = state.block_stack.map((b) => b.type).join(", ");
+		throw new Error(`Unclosed block(s): ${open_types}`);
 	}
 
 	// Wrap layout if present
-	if (layoutResult) {
-		code = `\n${code}\nconst __body = __output;\nconst __layoutData = Object.assign({}, props, ${layoutResult.data}, { body: __body });\n__output = await __include(${JSON.stringify(
-			layoutResult.name
+	if (layout_result) {
+		code = `\n${code}\nconst __body = __output;\nconst __layoutData = Object.assign({}, props, ${layout_result.data}, { body: __body });\n__output = await __include(${JSON.stringify(
+			layout_result.name
 		)}, __layoutData);\n`;
 	}
 
@@ -581,13 +581,13 @@ ${code}
 		console.error("Generated code:");
 		console.error(code);
 		console.error("==================================");
-		const errMsg = err instanceof Error ? err.message : String(err);
-		throw new Error(`Template compilation failed: ${errMsg}`);
+		const err_msg = err instanceof Error ? err.message : String(err);
+		throw new Error(`Template compilation failed: ${err_msg}`);
 	}
 
 	// Wrap to bind runtime helpers
-	const compiled = async (props: Record<string, any>, escape: (x: any) => string, boundInclude: (n: string, d: Record<string, any>) => Promise<string>, rtInclude: (n: string, d: Record<string, any>) => Promise<string>, currentName: string) => {
-		return await fn(props, escape, boundInclude, rtInclude, currentName, slotFns);
+	const compiled = async (props: Record<string, any>, escape: (x: any) => string, bound_include: (n: string, d: Record<string, any>) => Promise<string>, rt_include: (n: string, d: Record<string, any>) => Promise<string>, current_name: string) => {
+		return await fn(props, escape, bound_include, rt_include, current_name, slot_fns);
 	};
 
 	return { code, fn: compiled as unknown as CompiledFn };

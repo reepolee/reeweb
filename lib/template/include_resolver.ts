@@ -6,16 +6,16 @@
  * views-root relative paths, and extension-based kind detection.
  */
 
-import path, { dirname, extname, join, resolve as pathResolve } from "node:path";
+import path, { dirname, extname, join, resolve as path_resolve } from "node:path";
 
 import type { ResolveResult } from "./types";
 
 /**
  * Resolve include path relative to the current template name.
  *
- * @param currentName - The current template name (views-root relative, no extension)
- * @param includeName - The include path to resolve
- * @param viewsDir    - Absolute path to the views directory
+ * @param current_name - The current template name (views-root relative, no extension)
+ * @param include_name - The include path to resolve
+ * @param views_dir    - Absolute path to the views directory
  * @param ext         - Template file extension (e.g. ".ree")
  *
  * Supports:
@@ -27,70 +27,70 @@ import type { ResolveResult } from "./types";
  * * other ext        -> treat as raw file (unescaped text)
  * * no ext           -> template with this.ext
  */
-export function resolve_include(currentName: string, includeName: string, viewsDir: string, ext: string): ResolveResult {
-	// Normalize includeName into views-relative form
-	let name = includeName.trim();
-	let isAliasPath = false;
+export function resolve_include(current_name: string, include_name: string, views_dir: string, ext: string): ResolveResult {
+	// Normalize include_name into views-relative form
+	let name = include_name.trim();
+	let is_alias_path = false;
 
 	// ALIAS RESOLUTION - resolve to project root relative
 	if (name.startsWith("$components/")) {
 		name = name.replace("$components/", "components/");
-		isAliasPath = true;
+		is_alias_path = true;
 	} else if (name.startsWith("$routes/")) {
 		name = name.replace("$routes/", "routes/");
-		isAliasPath = true;
+		is_alias_path = true;
 	} else if (name.startsWith("$lib/")) {
 		name = name.replace("$lib/", "lib/");
-		isAliasPath = true;
+		is_alias_path = true;
 	}
 
 	// If it starts with '/', drop the leading slash and treat as views-root relative
-	if (!isAliasPath && name.startsWith("/")) {
+	if (!is_alias_path && name.startsWith("/")) {
 		name = name.slice(1);
-	} else if (!isAliasPath && (name.startsWith("./") || name.startsWith("../"))) {
+	} else if (!is_alias_path && (name.startsWith("./") || name.startsWith("../"))) {
 		// Relative to the current template dir
-		const baseDir = dirname(currentName);
+		const base_dir = dirname(current_name);
 		// Use posix-style joining to keep forward slashes in names
-		const joined = path.posix.join(baseDir.replace(/\\\\/g, "/"), name);
+		const joined = path.posix.join(base_dir.replace(/\\\\/g, "/"), name);
 		name = joined;
 	}
 	// else: treat as already views-root relative (e.g., "components/card") or alias path
 
-	const fileExt = extname(name);
+	const file_ext = extname(name);
 
-	if (fileExt) {
-		if (fileExt === ext) {
+	if (file_ext) {
+		if (file_ext === ext) {
 			// Treat as template with explicit extension -> remove ext to get name used by render()
-			const templateName = name.slice(0, -fileExt.length);
+			const template_name = name.slice(0, -file_ext.length);
 
-			// If it's an alias path, resolve relative to project root instead of viewsDir
-			if (isAliasPath) {
-				const projectRoot = dirname(viewsDir);
-				const filePath = join(projectRoot, templateName + ext);
-				// For alias templates, we need to load them directly since they're outside viewsDir
-				return { kind: "raw", filePath }; // Will be treated as raw but compiled
+			// If it's an alias path, resolve relative to project root instead of views_dir
+			if (is_alias_path) {
+				const project_root = dirname(views_dir);
+				const file_path = join(project_root, template_name + ext);
+				// For alias templates, we need to load them directly since they're outside views_dir
+				return { kind: "raw", file_path }; // Will be treated as raw but compiled
 			}
 
-			return { kind: "template", templateName };
+			return { kind: "template", template_name };
 		} else {
 			// Treat as raw file to be injected unescaped
-			const basePath = isAliasPath ? dirname(viewsDir) : viewsDir;
-			const rawFilePath = join(basePath, name);
+			const base_path = is_alias_path ? dirname(views_dir) : views_dir;
+			const raw_file_path = join(base_path, name);
 			// Security: ensure it remains under appropriate directory
-			const resolved = pathResolve(rawFilePath);
-			const baseResolved = pathResolve(basePath);
-			if (!resolved.startsWith(baseResolved)) {
-				throw new Error(`Include path escapes base directory: ${includeName}`);
+			const resolved = path_resolve(raw_file_path);
+			const base_resolved = path_resolve(base_path);
+			if (!resolved.startsWith(base_resolved)) {
+				throw new Error(`Include path escapes base directory: ${include_name}`);
 			}
-			return { kind: "raw", filePath: resolved };
+			return { kind: "raw", file_path: resolved };
 		}
 	} else {
 		// No extension -> template with default ext
-		if (isAliasPath) {
-			const projectRoot = dirname(viewsDir);
-			const filePath = join(projectRoot, name + ext);
-			return { kind: "raw", filePath }; // Will load and compile as .ree
+		if (is_alias_path) {
+			const project_root = dirname(views_dir);
+			const file_path = join(project_root, name + ext);
+			return { kind: "raw", file_path }; // Will load and compile as .ree
 		}
-		return { kind: "template", templateName: name };
+		return { kind: "template", template_name: name };
 	}
 }

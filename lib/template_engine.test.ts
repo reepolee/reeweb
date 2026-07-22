@@ -23,29 +23,29 @@ function with_temp_dir(fn: (dir: string, engine: any) => Promise<void>) {
 }
 
 describe("TemplateEngine", () => {
-	describe("renderString - inline compilation", () => {
+	describe("render_string - inline compilation", () => {
 		test("interpolates escaped output", async () => {
 			const engine = make_engine("/tmp");
-			const result = await engine.renderString("Hello {= props.name }!", { name: "World" });
+			const result = await engine.render_string("Hello {= props.name }!", { name: "World" });
 			expect(result).toBe("Hello World!");
 		});
 
 		test("escapes HTML in expressions", async () => {
 			const engine = make_engine("/tmp");
-			const result = await engine.renderString("{= '<script>alert(1)</script>' }");
+			const result = await engine.render_string("{= '<script>alert(1)</script>' }");
 			expect(result).toBe("&lt;script&gt;alert(1)&lt;/script&gt;");
 		});
 
 		test("unescaped output with {~ ... }", async () => {
 			const engine = make_engine("/tmp");
-			const result = await engine.renderString("{~ '<b>bold</b>' }");
+			const result = await engine.render_string("{~ '<b>bold</b>' }");
 			expect(result).toBe("<b>bold</b>");
 		});
 
 		test("{@ path } renders a translation value through markdown", async () => {
 			const engine = make_engine("/tmp");
 			const props = { translations: { ui: { body: "# Title\n\n**bold** text" } } };
-			const result = await engine.renderString("{@ ui.body }", props);
+			const result = await engine.render_string("{@ ui.body }", props);
 			expect(result).toContain("<h1>Title</h1>");
 			expect(result).toContain("<strong>bold</strong>");
 		});
@@ -53,37 +53,37 @@ describe("TemplateEngine", () => {
 		test("{@ path } on a missing key markdown-renders the {marker}", async () => {
 			const engine = make_engine("/tmp");
 			// Miss resolves to the "{body}" marker literal, which markdown wraps in a <p>.
-			const result = await engine.renderString("{@ ui.body }", { translations: {} });
+			const result = await engine.render_string("{@ ui.body }", { translations: {} });
 			expect(result).toContain("{body}");
 		});
 
 		test("{@ path } rejects an arbitrary expression (translation path only)", async () => {
 			const engine = make_engine("/tmp");
-			await expect(engine.renderString("{@ props.x + 1 }", { x: 1 })).rejects.toThrow();
+			await expect(engine.render_string("{@ props.x + 1 }", { x: 1 })).rejects.toThrow();
 		});
 
 		test("{@ } prefix does not clash with CSS nesting braces", async () => {
 			const engine = make_engine("/tmp");
 			// {&:hover{...}} must pass through as literal text, not a markdown tag.
 			const css = "<style>a{&:hover{color:red}}</style>";
-			expect(await engine.renderString(css)).toBe(css);
+			expect(await engine.render_string(css)).toBe(css);
 		});
 
 		test("raw JS with {{ ... }}", async () => {
 			const engine = make_engine("/tmp");
-			const result = await engine.renderString("{{ const x = 10; }}val: {= x }");
+			const result = await engine.render_string("{{ const x = 10; }}val: {= x }");
 			expect(result).toBe("val: 10");
 		});
 
 		test("literal ...identifier text is preserved", async () => {
 			const engine = make_engine("/tmp");
-			const result = await engine.renderString("before ...rest after");
+			const result = await engine.render_string("before ...rest after");
 			expect(result).toBe("before ...rest after");
 		});
 
 		test("client-side script blocks preserve JS spread syntax", async () => {
 			const engine = make_engine("/tmp");
-			const result = await engine.renderString(
+			const result = await engine.render_string(
 				"<script>const attrs = { ...props.attributes };</script>"
 			);
 			expect(result).toBe("<script>const attrs = { ...props.attributes };</script>");
@@ -93,7 +93,7 @@ describe("TemplateEngine", () => {
 	describe("{_ path} / {- path} - translation lookup", () => {
 		test("resolves a top-level path", async () => {
 			const engine = make_engine("/tmp");
-			const result = await engine.renderString("{_ ui.title}", {
+			const result = await engine.render_string("{_ ui.title}", {
 				translations: { ui: { title: "Kitchen Sink" } },
 			});
 			expect(result).toBe("Kitchen Sink");
@@ -101,7 +101,7 @@ describe("TemplateEngine", () => {
 
 		test("resolves a nested path", async () => {
 			const engine = make_engine("/tmp");
-			const result = await engine.renderString("{_ labels.text_input}", {
+			const result = await engine.render_string("{_ labels.text_input}", {
 				translations: { labels: { text_input: "Text Input" } },
 			});
 			expect(result).toBe("Text Input");
@@ -109,7 +109,7 @@ describe("TemplateEngine", () => {
 
 		test("HTML-escapes the resolved value", async () => {
 			const engine = make_engine("/tmp");
-			const result = await engine.renderString("{_ ui.title}", {
+			const result = await engine.render_string("{_ ui.title}", {
 				translations: { ui: { title: "<script>x</script>" } },
 			});
 			expect(result).toBe("&lt;script&gt;x&lt;/script&gt;");
@@ -117,7 +117,7 @@ describe("TemplateEngine", () => {
 
 		test("{- } does not HTML-escape", async () => {
 			const engine = make_engine("/tmp");
-			const result = await engine.renderString("{- ui.body}", {
+			const result = await engine.render_string("{- ui.body}", {
 				translations: { ui: { body: "<b>bold</b>" } },
 			});
 			expect(result).toBe("<b>bold</b>");
@@ -125,7 +125,7 @@ describe("TemplateEngine", () => {
 
 		test("renders {last_segment} when the leaf key is missing", async () => {
 			const engine = make_engine("/tmp");
-			const result = await engine.renderString("{_ labels.text_input}", {
+			const result = await engine.render_string("{_ labels.text_input}", {
 				translations: { labels: {} },
 			});
 			expect(result).toBe("{text_input}");
@@ -133,26 +133,26 @@ describe("TemplateEngine", () => {
 
 		test("renders {last_segment} when an intermediate object is missing", async () => {
 			const engine = make_engine("/tmp");
-			const result = await engine.renderString("{_ descriptions.card}", { translations: {} });
+			const result = await engine.render_string("{_ descriptions.card}", { translations: {} });
 			expect(result).toBe("{card}");
 		});
 
 		test("renders {last_segment} when props.translations is absent entirely", async () => {
 			const engine = make_engine("/tmp");
-			const result = await engine.renderString("{_ ui.title}", {});
+			const result = await engine.render_string("{_ ui.title}", {});
 			expect(result).toBe("{title}");
 		});
 
 		test("does not decorate real data outside props.translations", async () => {
 			const engine = make_engine("/tmp");
 			// {= } is unaffected by the {_ } safety net - null/undefined stays "".
-			const result = await engine.renderString("{= props.user}", { user: null });
+			const result = await engine.render_string("{= props.user}", { user: null });
 			expect(result).toBe("");
 		});
 
 		test("resolves a bracketed string key", async () => {
 			const engine = make_engine("/tmp");
-			const result = await engine.renderString("{_ selectors?.[\"0\"]}", {
+			const result = await engine.render_string("{_ selectors?.[\"0\"]}", {
 				translations: { selectors: { "0": "No" } },
 			});
 			expect(result).toBe("No");
@@ -160,7 +160,7 @@ describe("TemplateEngine", () => {
 
 		test("renders {last_segment} when a bracketed key is missing", async () => {
 			const engine = make_engine("/tmp");
-			const result = await engine.renderString("{_ selectors?.[\"0\"]}", {
+			const result = await engine.render_string("{_ selectors?.[\"0\"]}", {
 				translations: { selectors: {} },
 			});
 			expect(result).toBe("{0}");
@@ -168,12 +168,12 @@ describe("TemplateEngine", () => {
 
 		test("rejects arbitrary JS in the path at compile time", async () => {
 			const engine = make_engine("/tmp");
-			await expect(engine.renderString("{_ labels[key]}", { translations: {} })).rejects.toThrow();
+			await expect(engine.render_string("{_ labels[key]}", { translations: {} })).rejects.toThrow();
 		});
 
 		test("rejects a function call in the path at compile time", async () => {
 			const engine = make_engine("/tmp");
-			await expect(engine.renderString("{_ labels.text_input()}", { translations: {} })).rejects.toThrow();
+			await expect(engine.render_string("{_ labels.text_input()}", { translations: {} })).rejects.toThrow();
 		});
 	});
 
@@ -181,19 +181,19 @@ describe("TemplateEngine", () => {
 		test("renders truthy branch", async () => {
 			const engine = make_engine("/tmp");
 			const tmpl = "{#if props.show }shown{:else}hidden{/if}";
-			expect(await engine.renderString(tmpl, { show: true })).toBe("shown");
+			expect(await engine.render_string(tmpl, { show: true })).toBe("shown");
 		});
 
 		test("renders else branch", async () => {
 			const engine = make_engine("/tmp");
 			const tmpl = "{#if props.show }shown{:else}hidden{/if}";
-			expect(await engine.renderString(tmpl, { show: false })).toBe("hidden");
+			expect(await engine.render_string(tmpl, { show: false })).toBe("hidden");
 		});
 
 		test("renders if without else", async () => {
 			const engine = make_engine("/tmp");
 			const tmpl = "{#if props.show }visible{/if}";
-			expect(await engine.renderString(tmpl, { show: false })).toBe("");
+			expect(await engine.render_string(tmpl, { show: false })).toBe("");
 		});
 	});
 
@@ -201,21 +201,21 @@ describe("TemplateEngine", () => {
 		test("resolves property access on context object", async () => {
 			const engine = make_engine("/tmp");
 			const tmpl = "{#with props.obj}{= name }{/with}";
-			const result = await engine.renderString(tmpl, { obj: { name: "Alice" } });
+			const result = await engine.render_string(tmpl, { obj: { name: "Alice" } });
 			expect(result).toBe("Alice");
 		});
 
 		test("resolves nested property access", async () => {
 			const engine = make_engine("/tmp");
 			const tmpl = "{#with props.obj}{= user.email }{/with}";
-			const result = await engine.renderString(tmpl, { obj: { user: { email: "a@b.com" } } });
+			const result = await engine.render_string(tmpl, { obj: { user: { email: "a@b.com" } } });
 			expect(result).toBe("a@b.com");
 		});
 
 		test("works with unescaped output", async () => {
 			const engine = make_engine("/tmp");
 			const tmpl = "{#with props.obj}{~ html }{/with}";
-			const result = await engine.renderString(tmpl, { obj: { html: "<b>bold</b>" } });
+			const result = await engine.render_string(tmpl, { obj: { html: "<b>bold</b>" } });
 			expect(result).toBe("<b>bold</b>");
 		});
 
@@ -223,37 +223,37 @@ describe("TemplateEngine", () => {
 			const engine = make_engine("/tmp");
 			// Inside the outer `with`, `b` resolves to props.a.b via the with scope chain
 			const tmpl = "{#with props.a}{#with b}{= name }{/with}{/with}";
-			const result = await engine.renderString(tmpl, { a: { b: { name: "Nested" } } });
+			const result = await engine.render_string(tmpl, { a: { b: { name: "Nested" } } });
 			expect(result).toBe("Nested");
 		});
 
 		test("each inside with", async () => {
 			const engine = make_engine("/tmp");
 			const tmpl = "{#with props.obj}{#each items as item}{= item }{/each}{/with}";
-			const result = await engine.renderString(tmpl, { obj: { items: ["x", "y"] } });
+			const result = await engine.render_string(tmpl, { obj: { items: ["x", "y"] } });
 			expect(result).toBe("xy");
 		});
 
 		test("throws for empty with expression", async () => {
 			const engine = make_engine("/tmp");
-			await expect(engine.renderString("{#with }x{/with}")).rejects.toThrow(
+			await expect(engine.render_string("{#with }x{/with}")).rejects.toThrow(
 				"Invalid #with syntax"
 			);
 		});
 
 		test("throws for unclosed with", async () => {
 			const engine = make_engine("/tmp");
-			await expect(engine.renderString("{#with props.x}a")).rejects.toThrow("Unclosed");
+			await expect(engine.render_string("{#with props.x}a")).rejects.toThrow("Unclosed");
 		});
 
 		test("throws for unmatched /with", async () => {
 			const engine = make_engine("/tmp");
-			await expect(engine.renderString("{/with}")).rejects.toThrow("Unexpected {/with}");
+			await expect(engine.render_string("{/with}")).rejects.toThrow("Unexpected {/with}");
 		});
 
 		test("throws else inside with", async () => {
 			const engine = make_engine("/tmp");
-			await expect(engine.renderString("{#with props.x}a{:else}b{/with}")).rejects.toThrow(
+			await expect(engine.render_string("{#with props.x}a{:else}b{/with}")).rejects.toThrow(
 				"{:else} is not allowed"
 			);
 		});
@@ -261,7 +261,7 @@ describe("TemplateEngine", () => {
 		test("with inside an each loop", async () => {
 			const engine = make_engine("/tmp");
 			const tmpl = "{#each props.items as item}{#with item}{= value }{/with}{/each}";
-			const result = await engine.renderString(tmpl, { items: [{ value: 1 }, { value: 2 }] });
+			const result = await engine.render_string(tmpl, { items: [{ value: 1 }, { value: 2 }] });
 			expect(result).toBe("12");
 		});
 	});
@@ -270,26 +270,26 @@ describe("TemplateEngine", () => {
 		test("iterates over array", async () => {
 			const engine = make_engine("/tmp");
 			const tmpl = "{#each props.items as item}{= item }{/each}";
-			expect(await engine.renderString(tmpl, { items: ["a", "b", "c"] })).toBe("abc");
+			expect(await engine.render_string(tmpl, { items: ["a", "b", "c"] })).toBe("abc");
 		});
 
 		test("provides index variable", async () => {
 			const engine = make_engine("/tmp");
 			const tmpl = "{#each props.items as item, idx}{= idx }:{= item },{/each}";
-			expect(await engine.renderString(tmpl, { items: ["x", "y"] })).toBe("0:x,1:y,");
+			expect(await engine.render_string(tmpl, { items: ["x", "y"] })).toBe("0:x,1:y,");
 		});
 
 		test("provides key variable for objects", async () => {
 			const engine = make_engine("/tmp");
 			const tmpl = "{#each props.items as val, idx, key}{= key }={= val },{/each}";
-			const result = await engine.renderString(tmpl, { items: { a: 1, b: 2 } });
+			const result = await engine.render_string(tmpl, { items: { a: 1, b: 2 } });
 			expect(result).toBe("a=1,b=2,");
 		});
 
 		test("renders else when empty", async () => {
 			const engine = make_engine("/tmp");
 			const tmpl = "{#each props.items as item}{= item }{:else}empty{/each}";
-			expect(await engine.renderString(tmpl, { items: [] })).toBe("empty");
+			expect(await engine.render_string(tmpl, { items: [] })).toBe("empty");
 		});
 	});
 
@@ -383,79 +383,79 @@ describe("TemplateEngine", () => {
 
 	describe("components", () => {
 		test("ReeTag <tag-name> includes from components/ dir", with_temp_dir(async (dir, engine) => {
-			const componentsDir = join(dirname(dir), "components");
-			mkdirSync(componentsDir, { recursive: true });
+			const components_dir = join(dirname(dir), "components");
+			mkdirSync(components_dir, { recursive: true });
 			writeFileSync(
-				join(componentsDir, "my-badge.ree"),
+				join(components_dir, "my-badge.ree"),
 				"<span class='badge'>{= props.attributes.label }</span>"
 			);
 			writeFileSync(join(dir, "page.ree"), "<div><my-badge label='New'></my-badge></div>");
 			const result = await engine.render("page");
 			expect(result).toBe("<div><span class='badge'>New</span></div>");
-			rmSync(componentsDir, { recursive: true, force: true });
+			rmSync(components_dir, { recursive: true, force: true });
 		}));
 
 		test("{#include} explicitly resolves a component from components/ dir", with_temp_dir(async (dir, engine) => {
-			const componentsDir = join(dirname(dir), "components");
-			mkdirSync(componentsDir, { recursive: true });
+			const components_dir = join(dirname(dir), "components");
+			mkdirSync(components_dir, { recursive: true });
 			writeFileSync(
-				join(componentsDir, "my-badge.ree"),
+				join(components_dir, "my-badge.ree"),
 				"<span class='badge'>{= props.label }</span>"
 			);
 			writeFileSync(join(dir, "page.ree"), "{#include(\"$components/my-badge\")}");
 			const result = await engine.render("page", { label: "New" });
 			expect(result).toBe("<span class='badge'>New</span>");
-			rmSync(componentsDir, { recursive: true, force: true });
+			rmSync(components_dir, { recursive: true, force: true });
 		}));
 
 		test("{_ path} inside a ReeTag attribute resolves against props.translations", with_temp_dir(async (dir, engine) => {
-			const componentsDir = join(dirname(dir), "components");
-			mkdirSync(componentsDir, { recursive: true });
+			const components_dir = join(dirname(dir), "components");
+			mkdirSync(components_dir, { recursive: true });
 			writeFileSync(
-				join(componentsDir, "my-badge.ree"),
+				join(components_dir, "my-badge.ree"),
 				"<span class='badge'>{= props.attributes.label }</span>"
 			);
 			writeFileSync(join(dir, "page.ree"), "<my-badge label=\"{_ ui.title }\"></my-badge>");
 			const result = await engine.render("page", { translations: { ui: { title: "Kitchen Sink" } } });
 			expect(result).toBe("<span class='badge'>Kitchen Sink</span>");
-			rmSync(componentsDir, { recursive: true, force: true });
+			rmSync(components_dir, { recursive: true, force: true });
 		}));
 
 		test("{_ path} inside a ReeTag attribute renders {last_segment} on a miss", with_temp_dir(async (dir, engine) => {
-			const componentsDir = join(dirname(dir), "components");
-			mkdirSync(componentsDir, { recursive: true });
+			const components_dir = join(dirname(dir), "components");
+			mkdirSync(components_dir, { recursive: true });
 			writeFileSync(
-				join(componentsDir, "my-badge.ree"),
+				join(components_dir, "my-badge.ree"),
 				"<span class='badge'>{= props.attributes.label }</span>"
 			);
 			writeFileSync(join(dir, "page.ree"), "<my-badge label=\"{_ ui.title }\"></my-badge>");
 			const result = await engine.render("page", { translations: {} });
 			expect(result).toBe("<span class='badge'>{title}</span>");
-			rmSync(componentsDir, { recursive: true, force: true });
+			rmSync(components_dir, { recursive: true, force: true });
 		}));
 
 		test("{- path} inside a ReeTag attribute resolves against props.translations", with_temp_dir(async (dir, engine) => {
-			const componentsDir = join(dirname(dir), "components");
-			mkdirSync(componentsDir, { recursive: true });
+			const components_dir = join(dirname(dir), "components");
+			mkdirSync(components_dir, { recursive: true });
 			writeFileSync(
-				join(componentsDir, "my-badge.ree"),
+				join(components_dir, "my-badge.ree"),
 				"<span class='badge'>{= props.attributes.label }</span>"
 			);
 			writeFileSync(join(dir, "page.ree"), "<my-badge label=\"{- ui.title }\"></my-badge>");
 			const result = await engine.render("page", { translations: { ui: { title: "Kitchen Sink" } } });
 			expect(result).toBe("<span class='badge'>Kitchen Sink</span>");
-			rmSync(componentsDir, { recursive: true, force: true });
+			rmSync(components_dir, { recursive: true, force: true });
 		}));
 	});
 
 	describe("custom HTML elements", () => {
 		test("unknown custom element <tag-name> is passed through as literal HTML", with_temp_dir(async (_dir, engine) => {
-			const result = await engine.renderString("<toasts-area>content</toasts-area>");
+			const result = await engine.render_string("<toasts-area>content</toasts-area>");
 			expect(result).toBe("<toasts-area>content</toasts-area>");
 		}));
 
 		test("unknown custom element preserves HTML attributes", with_temp_dir(async (_dir, engine) => {
-			const result = await engine.renderString(
+			const result = await engine.render_string(
 				"<toasts-area class=\"foo\" id=\"bar\">content</toasts-area>"
 			);
 			expect(result).toBe("<toasts-area class=\"foo\" id=\"bar\">content</toasts-area>");
@@ -495,7 +495,7 @@ describe("TemplateEngine", () => {
 				tmpl = `<${tag}>${tmpl}</${tag}>`;
 			}
 			const start = performance.now();
-			const result = await engine.renderString(tmpl);
+			const result = await engine.render_string(tmpl);
 			const elapsed = performance.now() - start;
 			// Should complete quickly (< 2s) - if it takes longer, it likely infinite-looped
 			expect(elapsed).toBeLessThan(2000);
@@ -504,7 +504,7 @@ describe("TemplateEngine", () => {
 		});
 
 		test("template directives inside unknown custom element slots still work", with_temp_dir(async (_dir, engine) => {
-			const result = await engine.renderString("<wrapper>{= props.message }</wrapper>", {
+			const result = await engine.render_string("<wrapper>{= props.message }</wrapper>", {
 				message: "Hello from inside!",
 			});
 			expect(result).toBe("<wrapper>Hello from inside!</wrapper>");
@@ -513,28 +513,28 @@ describe("TemplateEngine", () => {
 			"known component file takes priority over unknown element passthrough",
 			with_temp_dir(async (dir, engine) => {
 				// Create a matching component file
-				const componentsDir = join(dirname(dir), "components");
-				mkdirSync(componentsDir, { recursive: true });
+				const components_dir = join(dirname(dir), "components");
+				mkdirSync(components_dir, { recursive: true });
 				// HTML attributes on the tag are passed as props.attributes.*
 				writeFileSync(
-					join(componentsDir, "my-badge.ree"),
+					join(components_dir, "my-badge.ree"),
 					"<span class='badge'>{= props.attributes.label }</span>"
 				);
 				writeFileSync(join(dir, "page.ree"), "<my-badge label='New'>slot</my-badge>");
 				const result = await engine.render("page");
 				expect(result).toBe("<span class='badge'>New</span>");
-				rmSync(componentsDir, { recursive: true, force: true });
+				rmSync(components_dir, { recursive: true, force: true });
 			})
 		);
 
 		test(
 			"<auto-complete> renders component with HTML attributes passed as props.attributes",
 			with_temp_dir(async (dir, engine) => {
-				const componentsDir = join(dirname(dir), "components");
-				mkdirSync(componentsDir, { recursive: true });
+				const components_dir = join(dirname(dir), "components");
+				mkdirSync(components_dir, { recursive: true });
 				// Component echoes its attributes as data-* attrs on a wrapper div
 				writeFileSync(
-					join(componentsDir, "auto-complete.ree"),
+					join(components_dir, "auto-complete.ree"),
 					"<div class=\"ac\" data-field=\"{= props.attributes[\"field-name\"] }\" data-fk-table=\"{= props.attributes[\"fk-table\"] }\" data-fk-column=\"{= props.attributes[\"fk-column\"] }\" data-base-url=\"{= props.attributes[\"base-url\"] }\" data-rows=\"{= props.attributes[\"rows\"] }\"></div>"
 				);
 				writeFileSync(
@@ -547,18 +547,18 @@ describe("TemplateEngine", () => {
 				expect(result).toContain("data-fk-column=\"registration_number\"");
 				expect(result).toContain("data-base-url=\"/partners\"");
 				expect(result).toContain("data-rows=\"15\"");
-				rmSync(componentsDir, { recursive: true, force: true });
+				rmSync(components_dir, { recursive: true, force: true });
 			})
 		);
 
 		test(
 			"<auto-complete> receives parent props (fields, record) via Object.assign",
 			with_temp_dir(async (dir, engine) => {
-				const componentsDir = join(dirname(dir), "components");
-				mkdirSync(componentsDir, { recursive: true });
+				const components_dir = join(dirname(dir), "components");
+				mkdirSync(components_dir, { recursive: true });
 				// Component accesses props.fields and props.record from parent scope
 				writeFileSync(
-					join(componentsDir, "auto-complete.ree"),
+					join(components_dir, "auto-complete.ree"),
 					"<div class=\"ac\" data-field=\"{= props.attributes[\"field-name\"] }\">" + "<span class=\"field-label\">{= props.fields?.[props.attributes[\"field-name\"]]?.label }</span>" + "<span class=\"field-value\">{= props.record?.[props.attributes[\"field-name\"]] }</span>" + "</div>"
 				);
 				writeFileSync(
@@ -573,18 +573,18 @@ describe("TemplateEngine", () => {
 				expect(result).toContain("data-field=\"company_id\"");
 				expect(result).toContain("<span class=\"field-label\">Company</span>");
 				expect(result).toContain("<span class=\"field-value\">42</span>");
-				rmSync(componentsDir, { recursive: true, force: true });
+				rmSync(components_dir, { recursive: true, force: true });
 			})
 		);
 
 		test(
 			"multiple <auto-complete> elements on page each render independently",
 			with_temp_dir(async (dir, engine) => {
-				const componentsDir = join(dirname(dir), "components");
-				mkdirSync(componentsDir, { recursive: true });
+				const components_dir = join(dirname(dir), "components");
+				mkdirSync(components_dir, { recursive: true });
 				// Component renders a wrapper with field-name as data-field
 				writeFileSync(
-					join(componentsDir, "auto-complete.ree"),
+					join(components_dir, "auto-complete.ree"),
 					"<div class=\"ac\" data-field=\"{= props.attributes[\"field-name\"] }\"></div>"
 				);
 				writeFileSync(
@@ -595,18 +595,18 @@ describe("TemplateEngine", () => {
 				expect(result).toBe(
 					"<div class=\"ac\" data-field=\"company_id\"></div>" + "<br>" + "<div class=\"ac\" data-field=\"partner_id\"></div>"
 				);
-				rmSync(componentsDir, { recursive: true, force: true });
+				rmSync(components_dir, { recursive: true, force: true });
 			})
 		);
 
 		test(
 			"<auto-complete> slot content is rendered as children prop",
 			with_temp_dir(async (dir, engine) => {
-				const componentsDir = join(dirname(dir), "components");
-				mkdirSync(componentsDir, { recursive: true });
+				const components_dir = join(dirname(dir), "components");
+				mkdirSync(components_dir, { recursive: true });
 				// Component renders children slot content wrapped in a div
 				writeFileSync(
-					join(componentsDir, "auto-complete.ree"),
+					join(components_dir, "auto-complete.ree"),
 					"<div class=\"ac-wrapper\">{~ props.children }</div>"
 				);
 				writeFileSync(
@@ -617,7 +617,51 @@ describe("TemplateEngine", () => {
 				expect(result).toBe(
 					"<div class=\"ac-wrapper\"><span class=\"hint\">Type to search</span></div>"
 				);
-				rmSync(componentsDir, { recursive: true, force: true });
+				rmSync(components_dir, { recursive: true, force: true });
+			})
+		);
+
+		test(
+			"spread ...identifier on a plain (non-hyphenated) element renders attributes",
+			with_temp_dir(async (_dir, engine) => {
+				// Only hyphenated tags used to expand spreads, so a component rendering
+				// a plain element - my-h1.ree renders an <h1> - emitted a literal "...rest".
+				const key_values = (rest: any) => Object.entries(rest).map(([k, v]) => v === true ? k : v === false || v == null ? "" : `${k}="${String(
+					v
+				)}"`).filter(Boolean).join(" ");
+				const tmpl = "{{ const attrs = { id: \"bar\", \"data-k\": \"v\" }; }}<div class=\"foo\" ...attrs>content</div>";
+				const result = await engine.render_string(tmpl, { helpers: { key_values } });
+				expect(result).toBe(`<div class="foo" id="bar" data-k="v">content</div>`);
+			})
+		);
+
+		test(
+			"rest-destructuring in a {{ }} block is not mistaken for an attribute spread",
+			with_temp_dir(async (_dir, engine) => {
+				// The my-h1 shape: ...rest appears twice, once as JS and once as markup.
+				const key_values = (rest: any) => Object.entries(rest).map(([k, v]) => v === true ? k : v === false || v == null ? "" : `${k}="${String(
+					v
+				)}"`).filter(Boolean).join(" ");
+				const tmpl = "{{ const { type = \"green\", ...rest } = { type: \"red\", id: \"q\" }; }}<div class=\"{= type }\" ...rest>x</div>";
+				const result = await engine.render_string(tmpl, { helpers: { key_values } });
+				expect(result).toBe(`<div class="red" id="q">x</div>`);
+			})
+		);
+
+		test(
+			"JS spread inside a <script> body is left alone",
+			with_temp_dir(async (_dir, engine) => {
+				const result = await engine.render_string("<script>const b = [...a, 3];</script>", {});
+				expect(result).toBe("<script>const b = [...a, 3];</script>");
+			})
+		);
+
+		test(
+			"JS spread inside an interpolated attribute value is left alone",
+			with_temp_dir(async (_dir, engine) => {
+				const tmpl = "{{ const nums = [3, 1]; }}<div data-max=\"{= Math.max(...nums) }\"></div>";
+				const result = await engine.render_string(tmpl, {});
+				expect(result).toBe(`<div data-max="3"></div>`);
 			})
 		);
 
@@ -629,7 +673,7 @@ describe("TemplateEngine", () => {
 					v
 				)}"`).filter(Boolean).join(" ");
 				const tmpl = "{{ const attrs = { class: \"foo\", id: \"bar\" }; }}<my-element ...attrs>content</my-element>";
-				const result = await engine.renderString(tmpl, { helpers: { key_values } });
+				const result = await engine.render_string(tmpl, { helpers: { key_values } });
 				expect(result).toBe(`<my-element class="foo" id="bar">content</my-element>`);
 			})
 		);
@@ -642,7 +686,7 @@ describe("TemplateEngine", () => {
 				)}"`).filter(Boolean).join(" ");
 				// Spread + explicit attr: spreads come first, explicit attrs follow
 				const tmpl = "{{ const attrs = { class: \"from-spread\" }; }}<my-element ...attrs class=\"explicit\">content</my-element>";
-				const result = await engine.renderString(tmpl, { helpers: { key_values } });
+				const result = await engine.render_string(tmpl, { helpers: { key_values } });
 				expect(result).toContain("class=\"from-spread\"");
 				expect(result).toContain("class=\"explicit\"");
 			})
@@ -651,11 +695,11 @@ describe("TemplateEngine", () => {
 		test(
 			"spread ...identifier on ReeTag spreads local object as attributes",
 			with_temp_dir(async (dir, engine) => {
-				const componentsDir = join(dirname(dir), "components");
-				mkdirSync(componentsDir, { recursive: true });
+				const components_dir = join(dirname(dir), "components");
+				mkdirSync(components_dir, { recursive: true });
 				// Component renders each property of props.attributes as data-* attr
 				writeFileSync(
-					join(componentsDir, "my-card.ree"),
+					join(components_dir, "my-card.ree"),
 					"<div class=\"card\" data-title=\"{= props.attributes.title }\" data-count=\"{= props.attributes.count }\">{~ props.children }</div>"
 				);
 				// Template defines a local object and spreads it onto the component
@@ -665,18 +709,18 @@ describe("TemplateEngine", () => {
 				expect(result).toBe(
 					"<div class=\"card\" data-title=\"Hello\" data-count=\"42\">content</div>"
 				);
-				rmSync(componentsDir, { recursive: true, force: true });
+				rmSync(components_dir, { recursive: true, force: true });
 			})
 		);
 
 		test(
 			"explicit attributes override spread properties on ReeTag",
 			with_temp_dir(async (dir, engine) => {
-				const componentsDir = join(dirname(dir), "components");
-				mkdirSync(componentsDir, { recursive: true });
+				const components_dir = join(dirname(dir), "components");
+				mkdirSync(components_dir, { recursive: true });
 				// Component outputs the class attribute
 				writeFileSync(
-					join(componentsDir, "my-card.ree"),
+					join(components_dir, "my-card.ree"),
 					"<div class=\"card\" data-class=\"{= props.attributes.class }\">{~ props.children }</div>"
 				);
 				// Template has spread object with class=\"a\" and explicit class=\"b\" - explicit should win
@@ -684,17 +728,17 @@ describe("TemplateEngine", () => {
 				writeFileSync(join(dir, "page.ree"), tmpl);
 				const result = await engine.render("page");
 				expect(result).toBe("<div class=\"card\" data-class=\"explicit\">content</div>");
-				rmSync(componentsDir, { recursive: true, force: true });
+				rmSync(components_dir, { recursive: true, force: true });
 			})
 		);
 
 		test(
 			"multiple spreads on the same ReeTag",
 			with_temp_dir(async (dir, engine) => {
-				const componentsDir = join(dirname(dir), "components");
-				mkdirSync(componentsDir, { recursive: true });
+				const components_dir = join(dirname(dir), "components");
+				mkdirSync(components_dir, { recursive: true });
 				writeFileSync(
-					join(componentsDir, "my-card.ree"),
+					join(components_dir, "my-card.ree"),
 					"<div class=\"card\" data-title=\"{= props.attributes.title }\" data-count=\"{= props.attributes.count }\" data-mode=\"{= props.attributes.mode }\">{~ props.children }</div>"
 				);
 				// Two spreads: second overrides first for duplicate keys
@@ -704,17 +748,17 @@ describe("TemplateEngine", () => {
 				expect(result).toBe(
 					"<div class=\"card\" data-title=\"A\" data-count=\"2\" data-mode=\"dark\">content</div>"
 				);
-				rmSync(componentsDir, { recursive: true, force: true });
+				rmSync(components_dir, { recursive: true, force: true });
 			})
 		);
 
 		test(
 			"spread with interpolated expression attribute on ReeTag",
 			with_temp_dir(async (dir, engine) => {
-				const componentsDir = join(dirname(dir), "components");
-				mkdirSync(componentsDir, { recursive: true });
+				const components_dir = join(dirname(dir), "components");
+				mkdirSync(components_dir, { recursive: true });
 				writeFileSync(
-					join(componentsDir, "my-card.ree"),
+					join(components_dir, "my-card.ree"),
 					"<div class=\"card\" data-title=\"{= props.attributes.title }\" data-mode=\"{= props.attributes.mode }\">{~ props.children }</div>"
 				);
 				// Spread with interpolated {~ expr } attr should both work
@@ -724,17 +768,17 @@ describe("TemplateEngine", () => {
 				expect(result).toBe(
 					"<div class=\"card\" data-title=\"FromSpread\" data-mode=\"dynamic\">content</div>"
 				);
-				rmSync(componentsDir, { recursive: true, force: true });
+				rmSync(components_dir, { recursive: true, force: true });
 			})
 		);
 
 		test(
 			"spread with boolean attribute on ReeTag",
 			with_temp_dir(async (dir, engine) => {
-				const componentsDir = join(dirname(dir), "components");
-				mkdirSync(componentsDir, { recursive: true });
+				const components_dir = join(dirname(dir), "components");
+				mkdirSync(components_dir, { recursive: true });
 				writeFileSync(
-					join(componentsDir, "my-card.ree"),
+					join(components_dir, "my-card.ree"),
 					"<div class=\"card\" data-title=\"{= props.attributes.title }\" data-disabled=\"{= props.attributes.disabled }\">{~ props.children }</div>"
 				);
 				// Spread object + boolean attribute
@@ -744,17 +788,17 @@ describe("TemplateEngine", () => {
 				expect(result).toBe(
 					"<div class=\"card\" data-title=\"Hello\" data-disabled=\"true\">content</div>"
 				);
-				rmSync(componentsDir, { recursive: true, force: true });
+				rmSync(components_dir, { recursive: true, force: true });
 			})
 		);
 
 		test(
 			"spread within an each loop on ReeTag",
 			with_temp_dir(async (dir, engine) => {
-				const componentsDir = join(dirname(dir), "components");
-				mkdirSync(componentsDir, { recursive: true });
+				const components_dir = join(dirname(dir), "components");
+				mkdirSync(components_dir, { recursive: true });
 				writeFileSync(
-					join(componentsDir, "my-card.ree"),
+					join(components_dir, "my-card.ree"),
 					"<div class=\"card\" data-label=\"{= props.attributes.label }\" data-id=\"{= props.attributes.id }\">{~ props.children }</div>"
 				);
 				// Spread inside an #each loop - each item's attrs spread onto the component.
@@ -766,7 +810,7 @@ describe("TemplateEngine", () => {
 				expect(result).toBe(
 					"<div class=\"card\" data-label=\"One\" data-id=\"1\">item</div><div class=\"card\" data-label=\"Two\" data-id=\"2\">item</div>"
 				);
-				rmSync(componentsDir, { recursive: true, force: true });
+				rmSync(components_dir, { recursive: true, force: true });
 			})
 		);
 	});
@@ -775,13 +819,13 @@ describe("TemplateEngine", () => {
 		test("expressions inside HTML comments are NOT evaluated", async () => {
 			const engine = make_engine("/tmp");
 			// {= props.x } inside <!-- --> should be stripped before compilation
-			const result = await engine.renderString("before<!-- {= props.x } -->after", { x: "CRASH" });
+			const result = await engine.render_string("before<!-- {= props.x } -->after", { x: "CRASH" });
 			expect(result).toBe("beforeafter");
 		});
 
 		test("expressions outside HTML comments are still evaluated", async () => {
 			const engine = make_engine("/tmp");
-			const result = await engine.renderString("{= props.greeting }<!-- comment -->{= props.name }", {
+			const result = await engine.render_string("{= props.greeting }<!-- comment -->{= props.name }", {
 				greeting: "Hello",
 				name: "World",
 			});
@@ -790,7 +834,7 @@ describe("TemplateEngine", () => {
 
 		test("HTML comments with multi-line content are stripped", async () => {
 			const engine = make_engine("/tmp");
-			const result = await engine.renderString("<!--\n\t<div class=\"{= props.cls }\">{= props.val }</div>\n-->shown", {
+			const result = await engine.render_string("<!--\n\t<div class=\"{= props.cls }\">{= props.val }</div>\n-->shown", {
 				cls: "foo",
 				val: "bar",
 			});
@@ -800,7 +844,7 @@ describe("TemplateEngine", () => {
 
 		test("directives inside HTML comments are not processed", async () => {
 			const engine = make_engine("/tmp");
-			const result = await engine.renderString(
+			const result = await engine.render_string(
 				"start<!-- {#if true}SHOULD_NOT_APPEAR{/if} -->end"
 			);
 			expect(result).toBe("startend");
@@ -826,18 +870,18 @@ describe("TemplateEngine", () => {
 	});
 
 	describe("language-aware loading", () => {
-		test("loadLocalized falls back through lang chain", with_temp_dir(async (dir, engine) => {
+		test("load_localized falls back through lang chain", with_temp_dir(async (dir, engine) => {
 			writeFileSync(join(dir, "page.sl.ree"), "Pozdravljeni!");
 			writeFileSync(join(dir, "page.en.ree"), "Hello!");
-			const sl = await engine.loadLocalized("page", "sl");
+			const sl = await engine.load_localized("page", "sl");
 			expect(sl.content).toContain("Pozdravljeni");
-			const en = await engine.loadLocalized("page", "en");
+			const en = await engine.load_localized("page", "en");
 			expect(en.content).toContain("Hello");
 		}));
 
-		test("loadLocalized falls back to default lang then bare file", with_temp_dir(async (dir, engine) => {
+		test("load_localized falls back to default lang then bare file", with_temp_dir(async (dir, engine) => {
 			writeFileSync(join(dir, "page.ree"), "Default fallback");
-			const result = await engine.loadLocalized("page", "de");
+			const result = await engine.load_localized("page", "de");
 			expect(result.content).toContain("Default fallback");
 		}));
 
@@ -857,31 +901,31 @@ describe("TemplateEngine", () => {
 			const engine = make_engine("/tmp");
 			// Pass a custom helper function via props.helpers
 			const helpers = { custom_upper: (s: string) => s.toUpperCase() };
-			const result = await engine.renderString("{= custom_upper('hello') }", { helpers });
+			const result = await engine.render_string("{= custom_upper('hello') }", { helpers });
 			expect(result).toBe("HELLO");
 		});
 
 		test("non-function helpers are ignored in eval", async () => {
 			const engine = make_engine("/tmp");
 			const helpers = { custom_data: { foo: "bar" } };
-			const result = await engine.renderString("Hello", { helpers });
+			const result = await engine.render_string("Hello", { helpers });
 			expect(result).toBe("Hello");
 		});
 	});
 
 	describe("cache", () => {
 		test("caches compiled file templates when enabled", with_temp_dir(async (dir, _engine) => {
-			const cachedEngine = new TE({ views: dir, cache: true, ext: ".ree" });
+			const cached_engine = new TE({ views: dir, cache: true, ext: ".ree" });
 			writeFileSync(join(dir, "t.ree"), "a");
-			await cachedEngine.render("t");
-			expect(Object.keys(cachedEngine.compiledCache).length).toBe(1);
+			await cached_engine.render("t");
+			expect(Object.keys(cached_engine.compiled_cache).length).toBe(1);
 		}));
 
-		test("clearCache empties compiled cache", async () => {
+		test("clear_cache empties compiled cache", async () => {
 			const engine = new TE({ views: "/tmp", cache: true, ext: ".ree" });
-			await engine.renderString("x");
-			engine.clearCache();
-			expect(Object.keys(engine.compiledCache).length).toBe(0);
+			await engine.render_string("x");
+			engine.clear_cache();
+			expect(Object.keys(engine.compiled_cache).length).toBe(0);
 		});
 	});
 });

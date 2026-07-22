@@ -92,7 +92,7 @@ export async function print_single_page(options: BuildOptions, request_url: stri
 		language_urls[lang] = lang === default_language ? "" : `/${lang}`;
 	}
 
-	const engine = new TemplateEngine({ views: public_dir, ext: ".ree", cache: false, autoEscape: true });
+	const engine = new TemplateEngine({ views: public_dir, ext: ".ree", cache: false, auto_escape: true });
 
 	const all_page_files = without_draft_pages(collect_page_files(public_dir, languages));
 	const ree_files = all_page_files.filter((f) => f.endsWith(".ree"));

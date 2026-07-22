@@ -32,29 +32,29 @@ import { include_resolved_handler, type IncludeHandlerDeps } from "./template/in
 import { resolve_include } from "./template/include_resolver";
 import type { CompiledFn } from "./template/types";
 
-type Config = { views?: string; cache?: boolean; autoEscape?: boolean; ext?: string; };
+type Config = { views?: string; cache?: boolean; auto_escape?: boolean; ext?: string; };
 
 class TemplateEngine {
-	viewsDir: string;
+	views_dir: string;
 	cache: boolean;
-	autoEscape: boolean;
+	auto_escape: boolean;
 	ext: string;
-	compiledCache: Record<string, CompiledFn>;
+	compiled_cache: Record<string, CompiledFn>;
 
 	constructor(config: Config = {}) {
-		this.viewsDir = config.views || "./views";
+		this.views_dir = config.views || "./views";
 		// cache only in production unless explicitly set
 		this.cache = typeof config.cache === "boolean" ? config.cache : process.env.NODE_ENV === "production";
-		this.autoEscape = config.autoEscape !== false;
+		this.auto_escape = config.auto_escape !== false;
 		this.ext = config.ext || ".ree";
-		this.compiledCache = {};
+		this.compiled_cache = {};
 	}
 
 	// Load template text from file
-	async loadTemplate(name: string): Promise<string> {
-		const filePath = join(this.viewsDir, name + this.ext);
-		if (!existsSync(filePath)) { throw new Error(`Template file not found: ${filePath}`); }
-		const f = file(filePath);
+	async load_template(name: string): Promise<string> {
+		const file_path = join(this.views_dir, name + this.ext);
+		if (!existsSync(file_path)) { throw new Error(`Template file not found: ${file_path}`); }
+		const f = file(file_path);
 		return await f.text();
 	}
 
@@ -63,13 +63,13 @@ class TemplateEngine {
 	 * {name}.{lang}.ree -> {name}.{default_language}.ree -> {name}.ree
 	 * Returns the content and the resolved name (for cache key usage).
 	 */
-	async loadLocalized(name: string, lang: string): Promise<{ content: string; resolvedName: string; }> {
+	async load_localized(name: string, lang: string): Promise<{ content: string; resolved_name: string; }> {
 		const candidates = [`${name}.${lang}`, `${name}.${default_language}`, name];
 		for (const candidate of candidates) {
-			const filePath = join(this.viewsDir, candidate + this.ext);
-			if (existsSync(filePath)) {
-				const f = file(filePath);
-				return { content: await f.text(), resolvedName: candidate };
+			const file_path = join(this.views_dir, candidate + this.ext);
+			if (existsSync(file_path)) {
+				const f = file(file_path);
+				return { content: await f.text(), resolved_name: candidate };
 			}
 		}
 		throw new Error(`Template not found: ${name} (tried: ${candidates.map((c) => c + this.ext).join(
@@ -81,17 +81,17 @@ class TemplateEngine {
 	 * Internal: include with resolution relative to current template.
 	 * Delegates to the extracted handler in include_handler.ts.
 	 */
-	private async includeResolved(currentName: string, includeName: string, props: Record<string, any>): Promise<string> {
+	private async include_resolved(current_name: string, include_name: string, props: Record<string, any>): Promise<string> {
 		const deps: IncludeHandlerDeps = {
-			resolve_include: (c, i) => resolve_include(c, i, this.viewsDir, this.ext),
+			resolve_include: (c, i) => resolve_include(c, i, this.views_dir, this.ext),
 			render: (n, p) => this.render(n, p),
 			compile: (t) => this.compile(t),
 			include: (n, p) => this.include(n, p),
-			autoEscape: this.autoEscape,
+			auto_escape: this.auto_escape,
 			escape: (s) => this.escape(s),
 			ext: this.ext,
 		};
-		return include_resolved_handler(deps, currentName, includeName, props);
+		return include_resolved_handler(deps, current_name, include_name, props);
 	}
 
 	/**
@@ -118,12 +118,12 @@ class TemplateEngine {
 	 */
 	compile_to_code(template: string): { code: string; fn: CompiledFn; } {
 		// Pre-process: custom elements, HTML comments, spread shorthand
-		const { template: processedTemplate, slotFns } = preprocess_template(template, this.viewsDir, this.ext, (content) => this.compile(
+		const { template: processed_template, slot_fns } = preprocess_template(template, this.views_dir, this.ext, (content) => this.compile(
 			content
 		));
 
 		// Compile: template directives -> async render function
-		return _compile_to_code(processedTemplate, slotFns);
+		return _compile_to_code(processed_template, slot_fns);
 	}
 
 	// HTML escape (single-pass)
@@ -142,58 +142,58 @@ class TemplateEngine {
 	}
 
 	async render(name: string, props: Record<string, any> = {}): Promise<string> {
-		const currentName = name; // used by relative includes within this template
+		const current_name = name; // used by relative includes within this template
 		const lang = props?.lang;
 
 		// Resolve localized variant if language is available:
 		// {name}.{lang}.ree -> {name}.{default_language}.ree -> {name}.ree
-		let resolvedName = name;
+		let resolved_name = name;
 		let template: string;
 		if (lang) {
-			const result = await this.loadLocalized(name, lang);
+			const result = await this.load_localized(name, lang);
 			template = result.content;
-			resolvedName = result.resolvedName;
+			resolved_name = result.resolved_name;
 		} else {
-			template = await this.loadTemplate(name);
+			template = await this.load_template(name);
 		}
 
-		if (this.cache && this.compiledCache[resolvedName]) {
-			const compiledFn = this.compiledCache[resolvedName];
-			const boundInclude = this.include.bind(this);
-			const rtInclude = this.includeResolved.bind(this, currentName);
-			const escape = this.autoEscape ? this.escape.bind(this) : (s: any) => String(s ?? "");
+		if (this.cache && this.compiled_cache[resolved_name]) {
+			const compiled_fn = this.compiled_cache[resolved_name];
+			const bound_include = this.include.bind(this);
+			const rt_include = this.include_resolved.bind(this, current_name);
+			const escape = this.auto_escape ? this.escape.bind(this) : (s: any) => String(s ?? "");
 			// @ts-expect-error - compiled function expects extra args via wrapper
-			return await (compiledFn as any)(props, escape, boundInclude, rtInclude, currentName);
+			return await (compiled_fn as any)(props, escape, bound_include, rt_include, current_name);
 		}
 
-		const compiledFn = this.compile(template);
+		const compiled_fn = this.compile(template);
 
-		if (this.cache) { this.compiledCache[resolvedName] = compiledFn; }
+		if (this.cache) { this.compiled_cache[resolved_name] = compiled_fn; }
 
-		const boundInclude = this.include.bind(this);
-		const rtInclude = this.includeResolved.bind(this, currentName);
-		const escape = this.autoEscape ? this.escape.bind(this) : (s: any) => String(s ?? "");
+		const bound_include = this.include.bind(this);
+		const rt_include = this.include_resolved.bind(this, current_name);
+		const escape = this.auto_escape ? this.escape.bind(this) : (s: any) => String(s ?? "");
 
 		// @ts-expect-error
-		return await (compiledFn as any)(props, escape, boundInclude, rtInclude, currentName);
+		return await (compiled_fn as any)(props, escape, bound_include, rt_include, current_name);
 	}
 
-	async renderString(templateString: string, props: Record<string, any> = {}): Promise<string> {
-		const compiledFn = this.compile(templateString);
-		const currentName = ""; // treat renderString as views-root
-		const boundInclude = this.include.bind(this);
-		const rtInclude = this.includeResolved.bind(this, currentName);
-		const escape = this.autoEscape ? this.escape.bind(this) : (s: any) => String(s ?? "");
+	async render_string(template_string: string, props: Record<string, any> = {}): Promise<string> {
+		const compiled_fn = this.compile(template_string);
+		const current_name = ""; // treat render_string as views-root
+		const bound_include = this.include.bind(this);
+		const rt_include = this.include_resolved.bind(this, current_name);
+		const escape = this.auto_escape ? this.escape.bind(this) : (s: any) => String(s ?? "");
 		// @ts-expect-error
-		return await (compiledFn as any)(props, escape, boundInclude, rtInclude, currentName);
+		return await (compiled_fn as any)(props, escape, bound_include, rt_include, current_name);
 	}
 
-	clearCache(): void { this.compiledCache = {}; }
+	clear_cache(): void { this.compiled_cache = {}; }
 
-	async writeOutput(filePath: string, content: string): Promise<void> {
-		const dir = dirname(filePath);
+	async write_output(file_path: string, content: string): Promise<void> {
+		const dir = dirname(file_path);
 		if (!existsSync(dir)) { mkdirSync(dir, { recursive: true }); }
-		await write(filePath, content);
+		await write(file_path, content);
 	}
 }
 

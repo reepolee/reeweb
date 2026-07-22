@@ -49,7 +49,7 @@ rules live below and in the linked guides - follow them.
 - **Template data** is accessed via `props.xxx` - never `data.xxx`.
 
 - `lib/` is the upstream library - never edit it directly. Put project code in `src/lib/`.
-- The shared `.ree` engine (`lib/template_engine.ts`, `lib/template/*`, `lib/template_engine.test.ts`) must match the canonical reepolee copy in logic. Run `bun run engine:check` to verify against a sibling checkout (`$REEPOLEE_DIR`, else `../reepolee`); it ignores comment and reettier-formatting differences and only fails on real logic drift.
+- The shared `.ree` engine (`lib/template_engine.ts`, `lib/template/*`, `lib/template_engine.test.ts`) must match the canonical reepolee copy in logic. Run `bun run engine:check` to verify against a sibling checkout (`$REEPOLEE_DIR`, else `../reepolee-dev`, else the public-release `../reepolee`); it ignores comment and reettier-formatting differences and only fails on real logic drift.
 
 ---
 
@@ -65,6 +65,7 @@ rules live below and in the linked guides - follow them.
 | CSS minified | `bun run css:build` |
 | Format | `bun run format` (reettier) |
 | Vendor check | `bun run vendor:check` |
+| Naming check (snake_case) | `bun run naming:check` |
 | Test | `bun test` |
 | Preview | `bun run preview` |
 

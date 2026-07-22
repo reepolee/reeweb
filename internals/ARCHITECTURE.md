@@ -162,7 +162,6 @@ src/
         css/style.css         # Page-specific CSS
         images/               # Static images
     components/               # Reusable .ree components
-        banner.ree
         my-h1.ree
         speculation-rules.ree
     css/                      # Tailwind CSS source

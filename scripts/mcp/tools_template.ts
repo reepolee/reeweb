@@ -44,7 +44,7 @@ const engine = new TemplateEngine({
 	views: PUBLIC_DIR,
 	cache: false,
 	ext: ".ree",
-	autoEscape: true,
+	auto_escape: true,
 });
 
 /**
@@ -101,7 +101,7 @@ export const template_tools: ToolDef[] = [
 		},
 		handler: async (args) => {
 			assert_template_rendering_enabled();
-			const html = await engine.renderString(args.template, default_template_data(
+			const html = await engine.render_string(args.template, default_template_data(
 				args.data || {}
 			));
 			return text_content(html);
@@ -213,7 +213,7 @@ export const template_tools: ToolDef[] = [
 			properties: {
 				path: {
 					type: "string",
-					description: "Project-relative path (e.g. 'src/public/index.ree', 'src/components/banner.ree').",
+					description: "Project-relative path (e.g. 'src/public/index.ree', 'src/components/my-h1.ree').",
 				},
 			},
 			required: ["path"],

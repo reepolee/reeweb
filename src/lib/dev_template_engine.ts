@@ -7,8 +7,8 @@
  * flag any logic change there) by doing all stamping in project code.
  *
  * Every .ree file the engine reads flows through one of:
- *   - loadTemplate / loadLocalized  (pages, layouts)
- *   - includeResolved -> include handler (components, $-alias includes)
+ *   - load_template / load_localized  (pages, layouts)
+ *   - include_resolved -> include handler (components, $-alias includes)
  * so we stamp at each of those read sites, tagging the text with its resolved
  * source path before it is compiled. Because each file is stamped as its own
  * source, a component's tags carry the component's line (boundary attribution
@@ -44,11 +44,11 @@ export class DevTemplateEngine extends TemplateEngine {
 	constructor(config: ConstructorParameters<typeof TemplateEngine>[0] & { project_root: string; }) {
 		super(config);
 		this.project_root = config.project_root;
-		// The base's includeResolved is private (compile-time only) but dispatched
-		// dynamically at runtime (this.includeResolved.bind(...) in render()).
+		// The base's include_resolved is private (compile-time only) but dispatched
+		// dynamically at runtime (this.include_resolved.bind(...) in render()).
 		// Rebind it to our stamping variant so component/include text is stamped
 		// with its own path. Bracket access sidesteps the TS private declaration.
-		(this as any).includeResolved = this.stamped_include_resolved.bind(this);
+		(this as any).include_resolved = this.stamped_include_resolved.bind(this);
 	}
 
 	/** Absolute .ree path -> project-root-relative, forward-slashed, for the stamp. */
@@ -59,17 +59,17 @@ export class DevTemplateEngine extends TemplateEngine {
 
 	// -- Page / layout loads ------------------------------------------------
 
-	override async loadTemplate(name: string): Promise<string> {
-		const raw = await super.loadTemplate(name);
-		const abs_path = join(this.viewsDir, name + this.ext);
+	override async load_template(name: string): Promise<string> {
+		const raw = await super.load_template(name);
+		const abs_path = join(this.views_dir, name + this.ext);
 		return stamp_dev_source(raw, this.stamp_path_for(abs_path));
 	}
 
-	override async loadLocalized(name: string, lang: string): Promise<{ content: string; resolvedName: string; }> {
-		const loaded = await super.loadLocalized(name, lang);
-		const abs_path = join(this.viewsDir, loaded.resolvedName + this.ext);
+	override async load_localized(name: string, lang: string): Promise<{ content: string; resolved_name: string; }> {
+		const loaded = await super.load_localized(name, lang);
+		const abs_path = join(this.views_dir, loaded.resolved_name + this.ext);
 		const stamped = stamp_dev_source(loaded.content, this.stamp_path_for(abs_path));
-		return { content: stamped, resolvedName: loaded.resolvedName };
+		return { content: stamped, resolved_name: loaded.resolved_name };
 	}
 
 	// -- Component / alias include loads ------------------------------------
@@ -79,17 +79,17 @@ export class DevTemplateEngine extends TemplateEngine {
 	// template-kind includes route back through render() (already stamped via the
 	// loaders), and non-.ree raw files are returned untouched.
 
-	private async stamped_include_resolved(currentName: string, includeName: string, props: Record<string, any>): Promise<string> {
+	private async stamped_include_resolved(current_name: string, include_name: string, props: Record<string, any>): Promise<string> {
 		const info: ResolveResult = resolve_include(
-			currentName,
-			includeName,
-			this.viewsDir,
+			current_name,
+			include_name,
+			this.views_dir,
 			this.ext
 		);
 
-		if (info.kind === "template") { return await this.render(info.templateName, props); }
+		if (info.kind === "template") { return await this.render(info.template_name, props); }
 
-		const base_path = info.filePath;
+		const base_path = info.file_path;
 		const exists = await file(base_path).exists();
 		if (!exists) throw new Error(`Included file not found: ${base_path}`);
 
@@ -123,11 +123,11 @@ export class DevTemplateEngine extends TemplateEngine {
 
 		const bound_include = this.include.bind(this);
 		const rt_include = (name: string, data: Record<string, any>) => this.stamped_include_resolved(
-			includeName,
+			include_name,
 			name,
 			data
 		);
-		const escape = this.autoEscape ? this.escape.bind(this) : (s: any) => String(s ?? "");
-		return await (compiled_fn as any)(props, escape, bound_include, rt_include, includeName);
+		const escape = this.auto_escape ? this.escape.bind(this) : (s: any) => String(s ?? "");
+		return await (compiled_fn as any)(props, escape, bound_include, rt_include, include_name);
 	}
 }

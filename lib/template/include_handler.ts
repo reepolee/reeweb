@@ -1,5 +1,5 @@
 /**
- * Include handler - extracted from TemplateEngine.includeResolved().
+ * Include handler - extracted from TemplateEngine.include_resolved().
  *
  * Handles runtime include dispatch:
  * - For templates (kind === "template"): delegates to render()
@@ -21,11 +21,11 @@ async function file_exists(p: string): Promise<boolean> { return await file(p).e
  * Dependencies needed from the TemplateEngine instance.
  */
 export interface IncludeHandlerDeps {
-	resolve_include(currentName: string, includeName: string): ResolveResult;
+	resolve_include(current_name: string, include_name: string): ResolveResult;
 	render(name: string, props: Record<string, any>): Promise<string>;
 	compile(template: string): CompiledFn;
 	include(name: string, props: Record<string, any>): Promise<string>;
-	autoEscape: boolean;
+	auto_escape: boolean;
 	escape(s: any): string;
 	ext: string;
 }
@@ -36,46 +36,46 @@ export interface IncludeHandlerDeps {
  * Routes through the dependency-injected TemplateEngine methods to
  * avoid circular module dependencies and keep the function pure.
  */
-export async function include_resolved_handler(deps: IncludeHandlerDeps, currentName: string, includeName: string, props: Record<string, any>): Promise<string> {
-	const info = deps.resolve_include(currentName, includeName);
+export async function include_resolved_handler(deps: IncludeHandlerDeps, current_name: string, include_name: string, props: Record<string, any>): Promise<string> {
+	const info = deps.resolve_include(current_name, include_name);
 	if (info.kind === "template") {
-		return await deps.render(info.templateName!, props);
+		return await deps.render(info.template_name!, props);
 	} else {
-		const p = info.filePath!;
+		const p = info.file_path!;
 		if (!(await file_exists(p))) { throw new Error(`Included file not found: ${p}`); }
 
 		// Check if it's a .ree template file that should be compiled
 		if (extname(p) === deps.ext) {
 			// Try language variants for raw .ree paths (e.g., components):
 			// {dir}/{base}.{lang}.ree -> {dir}/{base}.{default_language}.ree -> {dir}/{base}.ree
-			let resolvedFilePath = p;
-			const resolveLang = props?.lang;
-			if (resolveLang) {
-				const baseName = p.slice(0, -deps.ext.length);
-				const langCandidates = [
-					`${baseName}.${resolveLang}${deps.ext}`,
-					`${baseName}.${default_language}${deps.ext}`,
+			let resolved_file_path = p;
+			const resolve_lang = props?.lang;
+			if (resolve_lang) {
+				const base_name = p.slice(0, -deps.ext.length);
+				const lang_candidates = [
+					`${base_name}.${resolve_lang}${deps.ext}`,
+					`${base_name}.${default_language}${deps.ext}`,
 					p,
 				];
-				for (const lc of langCandidates) {
+				for (const lc of lang_candidates) {
 					if (await file_exists(lc)) {
-						resolvedFilePath = lc;
+						resolved_file_path = lc;
 						break;
 					}
 				}
 			}
-			const templateContent = await file(resolvedFilePath).text();
-			const compiledFn = deps.compile(templateContent);
-			const boundInclude = deps.include;
-			const rtInclude = (name: string, data: Record<string, any>) => include_resolved_handler(
+			const template_content = await file(resolved_file_path).text();
+			const compiled_fn = deps.compile(template_content);
+			const bound_include = deps.include;
+			const rt_include = (name: string, data: Record<string, any>) => include_resolved_handler(
 				deps,
-				includeName,
+				include_name,
 				name,
 				data
 			);
-			const escape = deps.autoEscape ? deps.escape : (s: any) => String(s ?? "");
+			const escape = deps.auto_escape ? deps.escape : (s: any) => String(s ?? "");
 			// @ts-expect-error
-			return await (compiledFn as any)(props, escape, boundInclude, rtInclude, includeName);
+			return await (compiled_fn as any)(props, escape, bound_include, rt_include, include_name);
 		} else {
 			// Raw file injected unescaped
 			const f = file(p);
