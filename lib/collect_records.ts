@@ -136,7 +136,8 @@ export function extract_md_title(fm: FrontMatter, body: string, fallback: string
 	if (typeof fm_title === "string" && fm_title.trim()) return fm_title.trim();
 
 	const h1 = body.match(/^#\s+(.+?)\s*$/m);
-	if (h1) return strip_markdown(h1[1]);
+	const h1_text = h1?.[1];
+	if (h1_text) return strip_markdown(h1_text);
 
 	return fallback;
 }

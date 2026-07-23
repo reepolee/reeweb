@@ -74,7 +74,6 @@ export async function include_resolved_handler(deps: IncludeHandlerDeps, current
 				data
 			);
 			const escape = deps.auto_escape ? deps.escape : (s: any) => String(s ?? "");
-			// @ts-expect-error
 			return await (compiled_fn as any)(props, escape, bound_include, rt_include, include_name);
 		} else {
 			// Raw file injected unescaped

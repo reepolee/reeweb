@@ -60,7 +60,7 @@ function parse_call(s: string): { name: string; data_expr: string; } | null {
 	const n = s.length;
 
 	// Read first arg: quoted string
-	while (i < n && /\s/.test(s[i])) i++;
+	while (i < n && /\s/.test(s[i]!)) i++;
 	if (i >= n) return null;
 
 	const quote = s[i];
@@ -85,12 +85,12 @@ function parse_call(s: string): { name: string; data_expr: string; } | null {
 	if (i > n) return null;
 
 	// Skip spaces
-	while (i < n && /\s/.test(s[i])) i++;
+	while (i < n && /\s/.test(s[i]!)) i++;
 
 	// Optional second arg
 	if (i < n && s[i] === ",") {
 		i++; // skip comma
-		while (i < n && /\s/.test(s[i])) i++;
+		while (i < n && /\s/.test(s[i]!)) i++;
 		let depth_paren = 0, depth_brace = 0, depth_bracket = 0;
 		let in_str: string | null = null;
 		let esc = false;
@@ -128,7 +128,7 @@ function parse_call(s: string): { name: string; data_expr: string; } | null {
 		return null; // no closing paren
 	} else {
 		// No second arg: expect ')'
-		while (i < n && /\s/.test(s[i])) i++;
+		while (i < n && /\s/.test(s[i]!)) i++;
 		if (i >= n || s[i] !== ")") return null;
 		return { name, data_expr: "{}" };
 	}
@@ -277,7 +277,7 @@ function emit_else(state: CompileState): string {
 	if (state.block_stack.length === 0) {
 		throw new Error("Unexpected {:else} without an open {#if} or {#each} block");
 	}
-	if (state.block_stack[state.block_stack.length - 1].type === "with") {
+	if (state.block_stack[state.block_stack.length - 1]!.type === "with") {
 		throw new Error("{:else} is not allowed inside {#with} blocks");
 	}
 	const current = state.block_stack[state.block_stack.length - 1]!;
@@ -302,7 +302,7 @@ function emit_else(state: CompileState): string {
  * Handle {/each} - closes an each block.
  */
 function emit_close_each(state: CompileState): string {
-	if (state.block_stack.length === 0 || state.block_stack[state.block_stack.length - 1].type !== "each") {
+	if (state.block_stack.length === 0 || state.block_stack[state.block_stack.length - 1]!.type !== "each") {
 		throw new Error("Unexpected {/each} without a matching {#each}");
 	}
 	const blk = state.block_stack.pop()!;
@@ -324,7 +324,7 @@ function emit_close_each(state: CompileState): string {
  * Handle {/with} - closes a with block.
  */
 function emit_close_with(state: CompileState): string {
-	if (state.block_stack.length === 0 || state.block_stack[state.block_stack.length - 1].type !== "with") {
+	if (state.block_stack.length === 0 || state.block_stack[state.block_stack.length - 1]!.type !== "with") {
 		throw new Error("Unexpected {/with} without a matching {#with}");
 	}
 	state.block_stack.pop();
@@ -338,7 +338,7 @@ function emit_close_with(state: CompileState): string {
  * Handle {/if} - closes an if block.
  */
 function emit_close_if(state: CompileState): string {
-	if (state.block_stack.length === 0 || state.block_stack[state.block_stack.length - 1].type !== "if") {
+	if (state.block_stack.length === 0 || state.block_stack[state.block_stack.length - 1]!.type !== "if") {
 		throw new Error("Unexpected {/if} without a matching {#if}");
 	}
 	state.block_stack.pop();
@@ -575,7 +575,7 @@ const __run_slot = async (id, ...args) => {
 };
 ${helper_vars}
 ${code}
-})()`) as (props: Record<string, any>, __escape: (x: any) => string, __include: (n: string, d: Record<string, any>) => Promise<string>, __rtInclude: (n: string, d: Record<string, any>) => Promise<string>, __currentName: string) => Promise<string>;
+})()`) as (props: Record<string, any>, __escape: (x: any) => string, __include: (n: string, d: Record<string, any>) => Promise<string>, __rtInclude: (n: string, d: Record<string, any>) => Promise<string>, __currentName: string, __slot_fns: CompiledFn[]) => Promise<string>;
 	} catch (err) {
 		console.error("=== Template Compilation Error ===");
 		console.error("Generated code:");

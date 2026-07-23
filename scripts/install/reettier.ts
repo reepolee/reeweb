@@ -24,8 +24,8 @@ function run_capture(cmd: string, args: string[]): Promise<string> {
 			;
 
 			let out = "";
-			p.stdout.on("data", (d: Buffer) => out += d.toString());
-			p.stderr.on("data", (d: Buffer) => out += d.toString());
+			p.stdout!.on("data", (d: Buffer) => out += d.toString());
+			p.stderr!.on("data", (d: Buffer) => out += d.toString());
 			p.on("error", reject);
 			p.on("exit", (code) => {
 				if (code === 0) resolve(out.trim()); else reject(new Error(
@@ -39,14 +39,15 @@ function run_capture(cmd: string, args: string[]): Promise<string> {
 export function normalize_reettier_version(version: string): string {
 	const match = version.trim().match(/^(\d+)\.(\d+)\.(\d+)$/);
 	if (!match) return version.trim();
-	return `${match[1]}.${match[2].padStart(2, "0")}.${match[3]}`;
+	return `${match[1]}.${match[2]!.padStart(2, "0")}.${match[3]}`;
 }
 
 async function get_installed_version(): Promise<string | null> {
 	try {
 		const raw = await run_capture("reettier", ["--version"]);
 		const match = raw.match(/(\d+\.\d+\.\d+)/);
-		return match ? normalize_reettier_version(match[1]) : null;
+		const version = match?.[1];
+		return version ? normalize_reettier_version(version) : null;
 	} catch {
 		return null;
 	}

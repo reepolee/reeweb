@@ -156,37 +156,39 @@ async function scan(path: string): Promise<Finding[]> {
 
 	for (let i = 0; i < clean.length; i++) {
 		const prev_depth = depth;
-		const opens = (clean[i].match(/\{/g) ?? []).length;
-		const closes = (clean[i].match(/\}/g) ?? []).length;
-		const entering_class = /\bclass\s+[A-Za-z_$][\w$]*/.test(clean[i]);
+		const clean_line = clean[i] ?? "";
+		const opens = (clean_line.match(/\{/g) ?? []).length;
+		const closes = (clean_line.match(/\}/g) ?? []).length;
+		const entering_class = /\bclass\s+[A-Za-z_$][\w$]*/.test(clean_line);
 		depth += opens - closes;
 		if (entering_class && class_body_depth === null) class_body_depth = prev_depth + 1;
 		else if (class_body_depth !== null && depth < class_body_depth) class_body_depth = null;
 
-		if (i > 0 && lines[i - 1].includes(IGNORE_MARKER)) continue;
-		const line = clean[i];
+		const prev_line = lines[i - 1] ?? "";
+		if (i > 0 && prev_line.includes(IGNORE_MARKER)) continue;
+		const line = clean_line;
 		const names: string[] = [];
 
 		// const/let/var, including destructuring patterns
-		for (const m of line.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)/g)) names.push(m[1]);
+		for (const m of line.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)/g)) names.push(m[1]!);
 		// Destructuring: non-greedy to the first closing bracket, so defaults
 		// inside the pattern (`{ type = "green", ...rest }`) are still matched.
 		// Bindings pulled straight off require()/import() are someone else's
 		// exports (`const { pathToFileURL } = await import("url")`) - not ours to
 		// rename, and renaming them breaks the import.
 		for (const m of line.matchAll(/\b(?:const|let|var)\s*(\{.*?\}|\[.*?\])\s*=\s*(.*)$/g)) {
-			if (/\b(?:require|import)\s*\(/.test(m[2])) continue;
-			names.push(...bindings_from_pattern(m[1]));
+			if (/\b(?:require|import)\s*\(/.test(m[2]!)) continue;
+			names.push(...bindings_from_pattern(m[1]!));
 		}
 
 		// function declarations
-		for (const m of line.matchAll(/\bfunction\s+([A-Za-z_$][\w$]*)/g)) names.push(m[1]);
+		for (const m of line.matchAll(/\bfunction\s+([A-Za-z_$][\w$]*)/g)) names.push(m[1]!);
 
 		// Class methods - only at class-body depth, and only signatures (ending in
 		// `{`), so a call like `write_file_sync(a, b);` is never mistaken for one.
 		if (class_body_depth !== null && prev_depth === class_body_depth) {
 			const method = /^\s*(?:(?:public|private|protected|static|readonly)\s+)*(?:async\s+)?([A-Za-z_$][\w$]*)\s*\([^;]*\)\s*(?::[^{;]+)?\{\s*$/.exec(line);
-			if (method) names.push(method[1]);
+			if (method) names.push(method[1]!);
 		}
 
 		for (const name of names) {

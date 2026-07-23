@@ -364,7 +364,8 @@ describe("TemplateEngine", () => {
 				});
 				expect(default_variant).toBe("<header>Hello</header>");
 
-				const missing_language = default_language === "fallback" ? "alternate" : "fallback";
+				const current_default: string = default_language;
+				const missing_language = current_default === "fallback" ? "alternate" : "fallback";
 				const fallback = await engine.render("page", {
 					lang: missing_language,
 					emptyData: {},

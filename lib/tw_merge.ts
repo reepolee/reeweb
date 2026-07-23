@@ -15,5 +15,5 @@
  * with the Tailwind CSS major in use (tailwind-merge v3 ↔ Tailwind v4).
  */
 
-import { twMerge } from "tailwind-merge";
-export function tw_merge(...classes): string { return twMerge(classes); }
+import { twMerge, type ClassNameValue } from "tailwind-merge";
+export function tw_merge(...classes: ClassNameValue[]): string { return twMerge(classes); }

@@ -18,7 +18,7 @@ function log(msg: string) { console.log(`[vips] ${msg}`); }
 function ensure_dir(dir: string) { fs.mkdirSync(dir, { recursive: true }); }
 
 function run(cmd: string, args: string[]) {
-	return new Promise((resolve, reject) => {
+	return new Promise<void>((resolve, reject) => {
 		const p = spawn(cmd, args, { stdio: "inherit" });
 		p.on("exit", (code) => {
 			if (code === 0) resolve(); else reject(new Error(`${cmd} failed with ${code}`));
@@ -26,7 +26,9 @@ function run(cmd: string, args: string[]) {
 	});
 }
 
-async function fetch_release(version: string) {
+type GithubRelease = { tag_name: string; assets: any[]; };
+
+async function fetch_release(version: string): Promise<GithubRelease> {
 	const url = version === "latest" ? "https://api.github.com/repos/libvips/build-win64-mxe/releases/latest" : `https://api.github.com/repos/libvips/build-win64-mxe/releases/tags/v${version}`;
 
 	const res = await fetch(url, {
@@ -35,7 +37,8 @@ async function fetch_release(version: string) {
 
 	if (!res.ok) { throw new Error(`GitHub API error: ${res.status}`); }
 
-	return res.json();
+	const release = await res.json();
+	return release as GithubRelease;
 }
 
 /* ---------------- ARCH DETECTION ---------------- */

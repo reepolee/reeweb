@@ -43,7 +43,8 @@ export type CollectionIssue = { file: string; field: string; message: string; };
 /** Render outcome counters returned by each render phase. */
 export type RenderTally = { rendered: number; errors: number; };
 
-export type { RouteResolver } from "../shared/routing";
+import type { RouteResolver } from "../shared/routing";
+export type { RouteResolver };
 
 /**
  * The dependency bundle shared by all render phases. Assembled by

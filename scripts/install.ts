@@ -107,7 +107,25 @@ async function format_with_reettier(): Promise<void> {
 	if (code !== 0) { throw new Error(`reettier failed with exit code ${code}`); }
 }
 
+// Written once, the moment this installer initializes the repository. It lives
+// inside .git rather than the working tree so it can never be committed, never
+// ships in the starter, and never survives a clone: a freshly cloned project
+// always arrives without it and gets exactly one reinitialization, while every
+// later run finds it and leaves the history alone. Deleting .git by hand is
+// therefore the only way to ask for a second one.
+const GIT_INSTALL_MARKER = join(".git", "reeweb_installed");
+
+async function write_git_install_marker(): Promise<void> {
+	const stamp = new Date().toISOString();
+	await Bun.write(GIT_INSTALL_MARKER, `initialized by reeweb:install ${stamp}\n`);
+}
+
 async function init_git_repo(): Promise<void> {
+	if (existsSync(GIT_INSTALL_MARKER)) {
+		console.log("[install] git already initialized by a previous install, leaving history untouched");
+		return;
+	}
+
 	console.log("[install] initializing git");
 	if (existsSync(".git")) {
 		console.log("[install] removing existing git history");
@@ -116,6 +134,11 @@ async function init_git_repo(): Promise<void> {
 
 	const init_result = await run_cmd_capture("git", ["init", "--initial-branch=main"]);
 	if (init_result.code !== 0) { throw new Error(`git init failed with exit code ${init_result.code}`); }
+
+	// Recorded before the commit steps below, which have their own early exits -
+	// the repository is initialized either way, so this run must be the last one
+	// that touches it.
+	await write_git_install_marker();
 
 	const user = await run_cmd_capture("git", ["config", "--global", "user.name"]);
 	const email = await run_cmd_capture("git", ["config", "--global", "user.email"]);

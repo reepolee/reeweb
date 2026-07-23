@@ -71,7 +71,7 @@ async function dispatch_inspector_message(ws: ServerWebSocket, raw: string, stat
 }
 
 declare global {
-	var __dev_server: Bun.Server | undefined;
+	var __dev_server: Bun.Server<undefined> | undefined;
 	var __dev_state: SiteState | undefined;
 }
 

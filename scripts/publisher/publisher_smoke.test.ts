@@ -44,7 +44,7 @@ afterAll(async () => {
 describe("Publisher HTTP service", () => {
 	test("reports health and accepts render signals while release rendering is paused", async () => {
 		const health_response = await fetch(`http://127.0.0.1:${test_port}/api/health`);
-		const health = await health_response.json();
+		const health = await health_response.json() as { ok: boolean; };
 		const signal_response = await fetch(
 			`http://127.0.0.1:${test_port}/api/render-signal`,
 			{ method: "POST" },

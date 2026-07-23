@@ -162,7 +162,6 @@ class TemplateEngine {
 			const bound_include = this.include.bind(this);
 			const rt_include = this.include_resolved.bind(this, current_name);
 			const escape = this.auto_escape ? this.escape.bind(this) : (s: any) => String(s ?? "");
-			// @ts-expect-error - compiled function expects extra args via wrapper
 			return await (compiled_fn as any)(props, escape, bound_include, rt_include, current_name);
 		}
 
@@ -174,7 +173,6 @@ class TemplateEngine {
 		const rt_include = this.include_resolved.bind(this, current_name);
 		const escape = this.auto_escape ? this.escape.bind(this) : (s: any) => String(s ?? "");
 
-		// @ts-expect-error
 		return await (compiled_fn as any)(props, escape, bound_include, rt_include, current_name);
 	}
 
@@ -184,7 +182,6 @@ class TemplateEngine {
 		const bound_include = this.include.bind(this);
 		const rt_include = this.include_resolved.bind(this, current_name);
 		const escape = this.auto_escape ? this.escape.bind(this) : (s: any) => String(s ?? "");
-		// @ts-expect-error
 		return await (compiled_fn as any)(props, escape, bound_include, rt_include, current_name);
 	}
 

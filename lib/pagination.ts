@@ -185,11 +185,13 @@ export function build_window(pages: PageLink[], current: number, last: number, o
 		const gap = p - prev;
 		if (gap === 2) {
 			// Only one page hidden - show it rather than an ellipsis.
-			items.push(pages[prev]); // pages[prev] is page number prev+1 (1-indexed)
+			const hidden_page = pages[prev]; // pages[prev] is page number prev+1 (1-indexed)
+			if (hidden_page) items.push(hidden_page);
 		} else if (gap > 2) {
 			items.push({ ellipsis: true });
 		}
-		items.push(pages[p - 1]);
+		const current_page = pages[p - 1];
+		if (current_page) items.push(current_page);
 		prev = p;
 	}
 

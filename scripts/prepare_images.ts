@@ -34,12 +34,12 @@
  * `lib/images.ts` and the `<responsive-image>` component, so templates
  * need no changes.
  *
- * Note on the ".png holds JPEG bytes" behaviour: the original script wrote the
- * JPEG-format fallback into a file that kept the source extension (so a `.png`
- * source yields a `.png` file containing JPEG data). That's reproduced here on
- * purpose, because the `<img src>` fallback relies on it. WebP sources use a
- * `.jpg` fallback so the WebP and JPEG outputs have distinct paths. Switch
- * `KEEP_SOURCE_EXT_FOR_JPEG` to false for a clean port.
+ * Note on the ".png holds JPEG bytes" behaviour: the JPEG-format fallback keeps
+ * the source extension, so a `.png` source yields a `.png` file containing JPEG
+ * data. This is intentional - the `<img src>` fallback points at that path.
+ * WebP sources instead use a `.jpg` fallback so the WebP and JPEG outputs have
+ * distinct paths. Set `KEEP_SOURCE_EXT_FOR_JPEG` to false to give every JPEG
+ * fallback a `.jpg` extension instead.
  *
  * Usage
  * -----
@@ -123,7 +123,7 @@ function parse_args(): Options {
 	const args = process.argv.slice(2);
 	let in_dir = DEFAULT_IN;
 	let out_dir = DEFAULT_OUT;
-	let widths = DEFAULT_WIDTHS;
+	let widths: number[] = DEFAULT_WIDTHS;
 	const quality: Quality = { webp: DEFAULT_QUALITY_WEBP, jpeg: DEFAULT_QUALITY_JPEG };
 	let concurrency = DEFAULT_CONCURRENCY;
 	let force = false;
@@ -299,12 +299,12 @@ function up_to_date(out: Outputs, src_mtime: number): boolean {
 // Concurrency pool
 // ---------------------------------------------------------------------------
 
-async function map_pool(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
+async function map_pool<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
 	let next = 0;
 	const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
 		while (next < items.length) {
 			const idx = next++;
-			await fn(items[idx]);
+			await fn(items[idx]!);
 		}
 	});
 	await Promise.all(workers);

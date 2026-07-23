@@ -26,7 +26,7 @@ export function parse_netstat_listeners(output: string, port: number): number[] 
 		const columns = trimmed.split(/\s+/);
 		// Expected: TCP    0.0.0.0:3100    0.0.0.0:0    LISTENING    41320
 		if (columns.length < 5) continue;
-		const local_address = columns[1];
+		const local_address = columns[1] ?? "";
 		if (!local_address.endsWith(`:${port}`)) continue;
 		const pid = Number(columns[4]);
 		if (Number.isInteger(pid) && pid > 0) pids.add(pid);

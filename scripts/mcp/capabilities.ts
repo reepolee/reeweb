@@ -15,7 +15,7 @@ export function assert_mcp_mutation_enabled(value = Bun.env.MCP_ENABLE_MUTATIONS
 	}
 }
 
-export function filter_mcp_tools(tools: T[], mutation_capability = Bun.env.MCP_ENABLE_MUTATIONS): T[] {
+export function filter_mcp_tools<T extends { name: string; }>(tools: T[], mutation_capability = Bun.env.MCP_ENABLE_MUTATIONS): T[] {
 	if (has_mcp_mutation_capability(mutation_capability)) { return tools; }
 	return tools.filter((tool) => !MUTATION_TOOL_NAMES.has(tool.name));
 }

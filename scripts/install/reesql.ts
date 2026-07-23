@@ -21,8 +21,8 @@ function run_capture(cmd: string, args: string[]): Promise<string> {
 			return reject(e);
 		}
 		let out = "";
-		p.stdout.on("data", (d: Buffer) => out += d.toString());
-		p.stderr.on("data", (d: Buffer) => out += d.toString());
+		p.stdout!.on("data", (d: Buffer) => out += d.toString());
+		p.stderr!.on("data", (d: Buffer) => out += d.toString());
 		p.on("error", reject);
 		p.on("exit", (code) => {
 			if (code === 0) resolve(out.trim()); else reject(
@@ -36,7 +36,7 @@ async function get_installed_version(): Promise<string | null> {
 	try {
 		const raw = await run_capture("reesql", ["--version"]);
 		const match = raw.match(/(\d+\.\d+\.\d+)/);
-		return match ? match[1] : null;
+		return match?.[1] ?? null;
 	} catch {
 		return null;
 	}

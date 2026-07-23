@@ -177,7 +177,7 @@ function discover_vendor_files(): CheckItem[] {
 			const pkg_match = head.match(
 				/(?:\/\/|<!--|{|})?\s*(@?[\w-]+)@([\d]+\.[\d]+\.[\d]+[\w.-]*)/
 			);
-			if (pkg_match) { matched_pkg = pkg_match[1].replace(/^@/, ""); }
+			if (pkg_match) { matched_pkg = pkg_match[1]!.replace(/^@/, ""); }
 		}
 
 		if (matched_pkg) {
@@ -215,7 +215,7 @@ function discover_get_scripts(vendor_files: CheckItem[]): CheckItem[] {
 			label: `${script}${repo_name ? " (GitHub)" : " (global tool)"}`,
 			pkg_name: pkg_name,
 			get_script: script,
-			repo_name: repo_name,
+			repo_name: repo_name ?? undefined,
 		});
 	}
 

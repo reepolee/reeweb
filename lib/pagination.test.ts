@@ -20,6 +20,7 @@ const opts = {
 		to: "to",
 		of: "of",
 		results: "results",
+		total_label: "total",
 	},
 };
 

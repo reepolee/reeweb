@@ -65,7 +65,7 @@ export type ProjectHooks = {
 	 * pills read once from package.json). Called per render; projects that read
 	 * from disk should compute once at module load and return the cached object.
 	 */
-	page_data_extras(ctx: PageDataCtx): Record<string, unknown>;
+	page_data_extras?(ctx: PageDataCtx): Record<string, unknown>;
 
 	/**
 	 * Seam 3 (SSG only) - SEO policy: is this canonical path a genuinely
@@ -73,20 +73,20 @@ export type ProjectHooks = {
 	 * (blog, product docs) so they are dropped from the hreflang cluster and
 	 * canonicalize to the default-language URL.
 	 */
-	is_localized_path(canonical_path: string, lang: string): boolean;
+	is_localized_path?(canonical_path: string, lang: string): boolean;
 
 	/**
 	 * Seam 4 - override markdown layout resolution. Return `undefined` to fall
 	 * back to the built-in (`<name>.layout.ree` → `<name>.ree` → `layout`).
 	 */
-	resolve_md_layout(rel_path: string, frontmatter: Record<string, any>, public_dir: string): string | undefined;
+	resolve_md_layout?(rel_path: string, frontmatter: Record<string, any>, public_dir: string): string | undefined;
 
 	/**
 	 * Seam 5 - shape a markdown page: transform the body HTML and contribute
 	 * extra render fields (table of contents, docs sidebar groups, coming-soon
 	 * body, page_title, …). Default: body unchanged, no extra fields.
 	 */
-	shape_md_page(input: ShapeMdInput): ShapeMdResult;
+	shape_md_page?(input: ShapeMdInput): ShapeMdResult;
 
 	/**
 	 * Seam 6 - per-page visibility. Receives the upstream default decision (from
@@ -95,5 +95,5 @@ export type ProjectHooks = {
 	 * it to express project statuses (draft / review / published), path-based
 	 * rules, etc. Default: the upstream decision is used unchanged.
 	 */
-	content_visibility(input: VisibilityInput): Visibility;
+	content_visibility?(input: VisibilityInput): Visibility;
 };

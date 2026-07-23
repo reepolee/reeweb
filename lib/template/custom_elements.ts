@@ -213,7 +213,7 @@ export function preprocess_template(template: string, views_dir: string, ext: st
 
 		const tag_name = match[1];
 		const attr_str = match[2] ?? "";
-		const slot_content = match[3];
+		const slot_content = match[3]!;
 
 		// Check if a matching component file exists under components/
 		const project_root = dirname(views_dir);

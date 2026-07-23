@@ -209,6 +209,10 @@ Any HTML attribute on the ReeTag becomes a prop in the component:
 |   |-- dev.ts                    # Development server (thin entrypoint over scripts/dev/)
 |   |-- dev/                      # Dev-server modules: site_state, resolve, render, pagination
 |   |-- preview.ts                # Preview server
+|   |-- publisher.ts              # Publisher dashboard entrypoint (thin over scripts/publisher/)
+|   |-- publisher/                # Publisher: git watch, render, preview, deploy dashboard
+|   |-- sync_dynamic_assets.ts    # Pull Reepolee-managed images/files before SSG (thin over scripts/dynamic_assets/)
+|   |-- dynamic_assets/           # Dynamic asset sync modules
 |   |-- generate_rss.ts           # RSS feed generator
 |   `-- generate_sitemap.ts       # Sitemap generator
 |-- vendor/

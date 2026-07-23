@@ -21,7 +21,7 @@ export type TemplateHelpers = Record<string, any>;
 // Standalone helper functions
 // ---------------------------------------------------------------------------
 
-export function key_values(rest) {
+export function key_values(rest: Record<string, unknown>) {
 	return Object.entries(rest).map(([key, value]) => {
 		if (value === true) return key; // boolean attribute
 		if (value === false || value == null) return ""; // skip
@@ -150,7 +150,7 @@ export function yes_no(val: number, type: YesNoType = "yes_only", selectors?: Re
 	const zero_class = type === "both" ? PILL_YES_NO_LAYOUT + " pill-no" : "bg-transparent";
 	const one_class = PILL_YES_NO_LAYOUT + " pill-yes";
 
-	const show_zero = type === "both" ? selectors?.["0"] : "";
+	const show_zero = type === "both" ? selectors?.["0"] ?? "" : "";
 	const show_one = selectors?.["1"] ?? "";
 
 	return val === 0 ? pill(show_zero, zero_class) + "</span>" : pill(show_one, one_class);
