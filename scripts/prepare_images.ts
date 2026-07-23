@@ -37,7 +37,8 @@
  * Note on the ".png holds JPEG bytes" behaviour: the original script wrote the
  * JPEG-format fallback into a file that kept the source extension (so a `.png`
  * source yields a `.png` file containing JPEG data). That's reproduced here on
- * purpose, because the `<img src>` fallback relies on it. Switch
+ * purpose, because the `<img src>` fallback relies on it. WebP sources use a
+ * `.jpg` fallback so the WebP and JPEG outputs have distinct paths. Switch
  * `KEEP_SOURCE_EXT_FOR_JPEG` to false for a clean port.
  *
  * Usage
@@ -54,7 +55,7 @@ import { existsSync, mkdirSync, statSync } from "fs";
 import { dirname, extname, join, resolve } from "path";
 import { Glob } from "bun";
 
-import { responsive_quality, responsive_widths } from "$config/responsive_images";
+import { responsive_quality, responsive_widths, screenshot_quality } from "$config/responsive_images";
 
 // ---------------------------------------------------------------------------
 // Bun.Image typing (not yet in the installed @types/bun)
@@ -63,7 +64,7 @@ import { responsive_quality, responsive_widths } from "$config/responsive_images
 type BunImageInstance = {
 	resize(width: number): BunImageInstance;
 	jpeg(opts?: { quality?: number; }): BunImageInstance;
-	webp(opts?: { quality?: number; }): BunImageInstance;
+	webp(opts?: { quality?: number; lossless?: boolean; }): BunImageInstance;
 	bytes(): Promise<Uint8Array>;
 	metadata(): Promise<{ width: number; height: number; format: string; }>;
 };
@@ -100,7 +101,14 @@ const KEEP_SOURCE_EXT_FOR_JPEG = true;
 // Args
 // ---------------------------------------------------------------------------
 
-type Quality = { webp: number; jpeg: number; };
+type Quality = {
+	webp: number;
+	jpeg: number;
+	lossless_webp?: boolean;
+	// Set when a CLI flag pinned the value, so the PNG routing stands aside.
+	webp_overridden?: boolean;
+	jpeg_overridden?: boolean;
+};
 
 type Options = {
 	in_dir: string;
@@ -140,11 +148,16 @@ function parse_args(): Options {
 			) && w > 0);
 		} else if (arg === "--quality" || arg === "-q") {
 			const q = to_q(args[++i], NaN);
-			if (Number.isFinite(q)) quality.webp = quality.jpeg = q;
+			if (Number.isFinite(q)) {
+				quality.webp = quality.jpeg = q;
+				quality.webp_overridden = quality.jpeg_overridden = true;
+			}
 		} else if (arg === "--quality-webp") {
 			quality.webp = to_q(args[++i], quality.webp);
+			quality.webp_overridden = true;
 		} else if (arg === "--quality-jpeg") {
 			quality.jpeg = to_q(args[++i], quality.jpeg);
+			quality.jpeg_overridden = true;
 		} else if (arg === "--concurrency" || arg === "-c") {
 			concurrency = Math.max(1, parseInt(args[++i] ?? String(concurrency), 10));
 		} else if (arg === "--force" || arg === "-f") {
@@ -190,13 +203,26 @@ type SourceImage = {
 	full_path: string; // absolute path to the original
 	rel_path: string; // path relative to in_dir, e.g. "people/ales.jpg"
 	name: string; // "ales"
-	ext: string; // ".jpg" / ".png" (original extension, lower-cased)
+	ext: string; // ".jpg" / ".png" / ".webp" (original extension, lower-cased)
 };
 
 type Outputs = { dir: string; webp: string; jpeg: string; };
 
-function jpeg_output_name(name: string, source_ext: string): string {
+/**
+ * PNG sources are screenshots: sharp text and flat colour, which lossy WebP
+ * softens, so they encode as lossless WebP with a higher-quality JPEG twin.
+ * Photographic and WebP sources keep the configured lossy settings.
+ * An explicit --quality* flag overrides the routing for every source.
+ */
+export function quality_for(source_ext: string, base: Quality): Quality {
+	if (source_ext !== ".png") return base;
+	const jpeg = base.jpeg_overridden ? base.jpeg : screenshot_quality.jpeg;
+	return { webp: base.webp, jpeg, lossless_webp: !base.webp_overridden };
+}
+
+export function jpeg_output_name(name: string, source_ext: string): string {
 	// Legacy quirk: JPEG fallback keeps the source extension.
+	if (source_ext === ".webp") return `${name}.jpg`;
 	return KEEP_SOURCE_EXT_FOR_JPEG ? `${name}${source_ext}` : `${name}.jpg`;
 }
 
@@ -218,8 +244,9 @@ function outputs_for(out_base: string, rel_dir: string, name: string, source_ext
 async function encode_variant(buf: ArrayBuffer, resize_to: number | null, out: Outputs, q: Quality): Promise<void> {
 	mkdirSync(out.dir, { recursive: true });
 	const make = () => (resize_to ? new BunImage(buf).resize(resize_to) : new BunImage(buf));
+	const webp_opts = q.lossless_webp ? { lossless: true } : { quality: q.webp };
 	const [webp_bytes, jpeg_bytes] = await Promise.all([
-		make().webp({ quality: q.webp }).bytes(),
+		make().webp(webp_opts).bytes(),
 		make().jpeg({ quality: q.jpeg }).bytes(),
 	]);
 	await Promise.all([Bun.write(out.webp, webp_bytes), Bun.write(out.jpeg, jpeg_bytes)]);
@@ -245,11 +272,12 @@ async function process_image(img: SourceImage, opts: Options): Promise<number> {
 
 	const buf = await Bun.file(img.full_path).arrayBuffer();
 	const orig_width = (await new BunImage(buf).metadata()).width;
+	const quality = quality_for(img.ext, opts.quality);
 
 	for (const t of todo) {
 		// Never upscale: clamp the target width to the original's width.
 		const resize_to = t.width !== null && t.width < orig_width ? t.width : null;
-		await encode_variant(buf, resize_to, t.out, opts.quality);
+		await encode_variant(buf, resize_to, t.out, quality);
 	}
 	return todo.length;
 }
@@ -303,7 +331,7 @@ async function main(): Promise<void> {
 	}
 
 	// Discover originals.
-	const glob = new Glob("**/*.{jpg,jpeg,png,JPG,JPEG,PNG}");
+	const glob = new Glob("**/*.{jpg,jpeg,png,webp,JPG,JPEG,PNG,WEBP}");
 	const images: SourceImage[] = [];
 	for await (const rel of glob.scan({ cwd: opts.in_dir, onlyFiles: true })) {
 		const ext = extname(rel).toLowerCase();
@@ -343,7 +371,9 @@ async function main(): Promise<void> {
 	console.log(`  (${opts.force ? "forced full rebuild" : "skipped up-to-date outputs"})`);
 }
 
-main().catch((err) => {
-	console.error(err);
-	process.exit(1);
-});
+if (import.meta.main) {
+	main().catch((err) => {
+		console.error(err);
+		process.exit(1);
+	});
+}

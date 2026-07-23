@@ -8,7 +8,7 @@
  * modules; this file just wires them together (cf. lib/template_engine.ts).
  */
 
-import { copyFileSync, existsSync, mkdirSync, rmSync } from "fs";
+import { copyFileSync, existsSync, mkdirSync } from "fs";
 import { dirname, join } from "path";
 import { pathToFileURL } from "url";
 
@@ -29,6 +29,7 @@ import TemplateEngine from "$lib/template_engine";
 
 import { without_draft_pages } from "$lib/draft_pages";
 
+import { clear_directory } from "../shared/clear_directory";
 import { parse_args } from "./cli";
 import { find_schema_files, validate_collections } from "./collections";
 import { render_markdown_files } from "./render_markdown";
@@ -113,9 +114,8 @@ export async function run_ssg(options: BuildOptions = parse_args()): Promise<{ r
 	const generated_routes = new Set<string>();
 	const static_asset_paths = new Set<string>();
 
-	// Clear and recreate dist/ (remove stale files from previous builds).
-	if (existsSync(dist_dir)) { rmSync(dist_dir, { recursive: true, force: true }); }
-	mkdirSync(dist_dir, { recursive: true });
+	// Preserve the dist/ directory itself because preview servers may watch it.
+	clear_directory(dist_dir);
 
 	// 1. Load translations from public/ (same loader as lib/i18n.ts).
 	console.log("📖 Loading translations...");

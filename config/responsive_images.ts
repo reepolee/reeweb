@@ -24,3 +24,9 @@ export const responsive_widths = [300, 500, 800, 1440] as const;
 // download; JPEG is the universal fallback. Lower these to trade quality for
 // smaller files.
 export const responsive_quality = { webp: 80, jpeg: 80 } as const;
+
+// PNG sources are screenshots: flat UI colour and sharp text, which lossy DCT
+// compression smears. They get lossless WebP instead (quality is ignored when
+// lossless), and a higher-quality JPEG twin since the <img src> fallback cannot
+// be lossless at all.
+export const screenshot_quality = { jpeg: 85 } as const;

@@ -9,6 +9,7 @@ nul
 # output
 out
 dist
+.deployed
 *.tgz
 static/avatars
 static/app-dev.css
@@ -18,6 +19,9 @@ engine_drift.diff
 
 # generated responsive images (rebuilt from assets/images by scripts/prepare_images.ts)
 src/public/images/responsive/
+src/public/files/dynamic/
+assets/images/dynamic/
+assets/files/dynamic/
 			
 # code coverage
 coverage

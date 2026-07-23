@@ -15,11 +15,18 @@
 
 import { responsive_widths } from "$config/responsive_images";
 
-/** Insert the width sub-folder before the filename (no width = original). */
+/** Insert the width sub-folder immediately after `/responsive/`. */
 function with_width(url: string, size?: number): string {
 	if (!size) return url;
-	const fname = url.split("/").pop() ?? "";
-	return url.replace(fname, `${size}/${fname}`);
+	const marker = "/responsive/";
+	const marker_index = url.indexOf(marker);
+	if (marker_index < 0) {
+		throw new Error(`Responsive image URL must contain "${marker}": "${url}"`);
+	}
+	const insert_at = marker_index + marker.length;
+	const before_width = url.slice(0, insert_at);
+	const after_width = url.slice(insert_at);
+	return `${before_width}${size}/${after_width}`;
 }
 
 export function avif(url: string, size?: number): string {

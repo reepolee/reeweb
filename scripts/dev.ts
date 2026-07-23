@@ -157,6 +157,12 @@ if (!is_first_run) {
 			fetch: async (req: Request): Promise<Response | undefined> => {
 				const pathname = new URL(req.url).pathname;
 
+				if (req.method === "POST" && pathname === "/__publisher_reload") {
+					await state.reload();
+					notify_clients();
+					return new Response(null, { status: 204 });
+				}
+
 				// WebSocket live reload.
 				if (pathname === "/__reload") {
 					if (server.upgrade(req)) return;

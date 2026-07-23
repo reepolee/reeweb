@@ -67,12 +67,13 @@ Example (the starter's `src/public/index.ts` ships this pattern commented out as
 
 ```typescript
 import { fetch_collection } from "../lib/reepolee_api";
+import { handle_dynamic_assets } from "../lib/dynamic_assets";
 
 export async function load_template_data(): Promise<Record<string, any>> {
     let team: any[] = [];
     try {
         const team_result = await fetch_collection("/team");
-        team = team_result.data;
+        team = await handle_dynamic_assets(team_result.data);
     } catch (err) {
         console.warn("[reeweb] Could not fetch team from local reepolee server:", (err as Error).message);
     }
@@ -81,5 +82,22 @@ export async function load_template_data(): Promise<Record<string, any>> {
 ```
 
 Requires reepolee in agent mode. See [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md#reepolee-api-integration) for setup.
+
+Before rendering, `bun run dynamic:sync` reads the existing Reepolee
+`/system/images` and `/system/files` JSON APIs. It mirrors those registered
+assets into `assets/images/dynamic/` and `assets/files/dynamic/`. The normal
+responsive-image preparation task then processes the synchronized images.
+When `REEPOLEE_API_URL` is not configured, synchronization reports that it was
+skipped and leaves the local dynamic asset folders untouched.
+
+`handle_dynamic_assets()` does not fetch data or files. It recursively rewrites
+fields ending in `_image` or `_file` using the synchronized local files. The
+returned values are local public URLs with content fingerprints. Synchronization
+compares each API record's `s3_key` and `updated_at` with the local dynamic
+folders, so it downloads only added or changed assets and deletes candidates
+removed from Reepolee. Use `bun run dynamic:sync --force` to download every
+candidate when storage changed outside Reepolee. JPG, JPEG, PNG, and WebP image
+originals are supported. A WebP original receives a distinct `.jpg` fallback
+base URL for the responsive-image helpers.
 
 > Always use a relative import (`../lib/reepolee_api`), not the `$lib` path alias. Path aliases are resolved by `tsconfig.json` but break in dynamic `file://` imports used by the dev server's module cache-busting.
