@@ -22,6 +22,21 @@ bun ssg
 bun preview
 ```
 
+`bun reeweb:install` (`scripts/install.ts` + `get:pre`) is a one-time, non-interactive
+bootstrap for a fresh checkout of this starter:
+
+- Sets `package.json` `name`/`author` from the current folder name and your `git config`.
+- Patches the `name` field in `wrangler.jsonc` to match.
+- Copies `.env.example` -> `.env` (skipped if `.env` already exists).
+- Runs `bun install`, then installs (if missing) and runs `reettier`.
+- **Resets git**: deletes any existing `.git` history and creates a single "Initial commit
+  by reeweb:install" on `main`. Run it right after cloning the starter, before you have any
+  commits of your own - a marker file inside `.git` (never committed) makes this step a
+  no-op on every later run, so re-running `bun reeweb:install` is safe and won't touch
+  history again.
+- `get:pre` then fetches vendored assets (`zod`, `highlight.js`) and installs the
+  `reesql`/`reettier`/`concurrently` CLIs.
+
 ---
 
 ## Commands
@@ -34,6 +49,8 @@ bun preview
 | CSS build (minified)     | `bun run css:build` (writes committed `src/public/css/style.min.css`) |
 | Format                   | `bun run format`                                      |
 | Vendor check             | `bun run vendor:check`                                |
+| Deploy (Cloudflare)      | `bun run cf:deploy` (needs a globally-installed `wrangler` CLI and `wrangler login`) |
+| Local tunnel preview     | `bun run cf:share` (`wrangler dev --tunnel`)          |
 | Test                     | `bun test`                                            |
 | Test (watch)             | `bun test --watch`                                    |
 | Preview                  | `bun run preview` (serves `./dist` via `scripts/preview.ts`) |
@@ -158,6 +175,7 @@ Any HTML attribute on the ReeTag becomes a prop in the component:
 - **Translations**: `{lang}.json` files next to templates, loaded by `lib/i18n.ts` and merged into render data.
 - **Markdown**: `.md` files in `src/public/` are rendered via `Bun.markdown.html()` with frontmatter parsing, syntax highlighting, and Tailwind class injection.
 - **CSS**: Tailwind v4 via standalone CLI (`tailwindcss`). Source in `src/css/`, output to `src/public/css/style.min.css`.
+- **Open Graph images**: `bun run ssg` chains `og:images` (`scripts/generate_og_images.ts`), which rasterizes a per-page OG card via the globally installed `vips` binary - not fetched by `reeweb:install`/`get:pre`. Install it once with `bun scripts/cli.ts vips --version=latest` (auto-detects macOS/Linux/Windows and uses `brew`/`apt`/`dnf`/`pacman`/a downloaded build respectively) before the first `bun run ssg`. Style/branding lives in `config/og_images.ts`.
 - **Path aliases** (tsconfig): `$config/*`, `$lib/*`, `$root/*`, `$vendor/*`.
 
 ---
