@@ -1,0 +1,35 @@
+{#layout("layout")}
+
+{{
+	const attrs = {
+		class: "font-black",
+		style: "background: #b40000; padding:2rem; color:white",
+		"data-element": "page_title",
+	};
+}}
+
+<div class="page about-page">
+	<my-h1 ...attrs>{_ ui.title}</my-h1>
+
+	<p class="lead">{_ ui.description}</p>
+
+	<div class="content-grid">
+		<section class="card">
+			<h2>{_ ui.mission_title}</h2>
+			<p>{_ ui.mission_text}</p>
+		</section>
+		<section class="card">
+			<h2>{_ ui.team_title}</h2>
+			<p>{_ ui.team_text}</p>
+		</section>
+	</div>
+
+	<div class="highlights">
+		{#each props.highlights as item}
+			<div class="highlight-item">
+				<strong>{= item.label}</strong>
+				<span>{= item.value}</span>
+			</div>
+		{/each}
+	</div>
+</div>

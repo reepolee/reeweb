@@ -1,0 +1,51 @@
+import { install_reettier } from "./install/reettier";
+import { install_reesql } from "./install/reesql";
+import { install_tailwind } from "./install/tailwind";
+import { install_vips } from "./install/vips";
+
+const args = process.argv.slice(2);
+
+const command = args[0];
+switch (command) {
+	case "reettier":
+		{
+			await install_reettier();
+			process.exit(0);
+			break;
+		}
+	case "vips":
+		{
+			const version_arg = args.find((a) => a.startsWith("--version="));
+			const version = version_arg?.split("=")[1] ?? "latest";
+
+			await install_vips({ version });
+			process.exit(0);
+			break;
+		}
+	case "reesql":
+		{
+			await install_reesql();
+			process.exit(0);
+			break;
+		}
+	case "tw":
+		{
+			const version_arg = args.find((a) => a.startsWith("--version="));
+			const version = version_arg?.split("=")[1] ?? "latest";
+
+			const detail = await install_tailwind({ version });
+			console.log(`[tailwindcss] ${detail}`);
+			process.exit(0);
+			break;
+		}
+	default:
+		console.log(`
+Usage:
+  bun scripts/cli.ts vips --version=latest
+  bun scripts/cli.ts vips --version=8.15.3
+  bun scripts/cli.ts reettier
+  bun scripts/cli.ts reesql
+  bun scripts/cli.ts tw --version=latest
+  bun scripts/cli.ts tw --version=4.3.3
+		`);
+}

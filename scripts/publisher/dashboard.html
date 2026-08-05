@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	__REFRESH_META__
+	<title>Ree-web Publisher</title>
+	<style>
+		:root { color-scheme: dark; font-family: system-ui, sans-serif; background: #111827; color: #e5e7eb; }
+		body { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+		header, .actions { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+		header { justify-content: space-between; }
+		.card, details, dialog { background: #1f2937; border: 1px solid #374151; border-radius: .6rem; padding: 1rem; margin: 1rem 0; }
+		button, .button { background: #2563eb; border: 0; border-radius: .4rem; color: white; cursor: pointer; padding: .65rem 1rem; text-decoration: none; }
+		button[disabled] { cursor: not-allowed; opacity: .45; }
+		.added { color: #4ade80; } .changed { color: #facc15; } .deleted, .error { color: #f87171; }
+		.text-diff { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+		pre { max-height: 28rem; overflow: auto; white-space: pre-wrap; background: #111827; padding: .75rem; }
+		code { overflow-wrap: anywhere; }
+		@media (max-width: 750px) { .text-diff { grid-template-columns: 1fr; } }
+	</style>
+</head>
+<body>
+	<header>
+		<div><h1>Ree-web Publisher</h1><p>__STATUS__</p></div>
+		<p>__BRANCH__ at __HEAD__</p>
+	</header>
+	__ERROR_HTML__
+	<section class="card">
+		<div class="actions">
+			<form method="post" action="/api/render"><button type="submit">Force render</button></form>
+			__PREVIEW_LINK__
+			<button type="button" commandfor="deploy_dialog" command="show-modal"__PUBLISH_DISABLED__>Publish __CHANGE_COUNT__ change(s)</button>
+			<a class="button" href="/">Refresh</a>
+		</div>
+	</section>
+	<h2>Generated file diff</h2>
+	__CHANGE_HTML__
+	<details><summary>Latest command output</summary><pre>__OUTPUT__</pre></details>
+	<dialog id="deploy_dialog">
+		<h2>Publish candidate?</h2>
+		<p>This runs the project's existing <code>bun run cf:deploy</code> task.</p>
+		<div class="actions">
+			<form method="post" action="/api/deploy"><button type="submit">Publish now</button></form>
+			<button type="button" commandfor="deploy_dialog" command="close">Cancel</button>
+		</div>
+	</dialog>
+</body>
+</html>
