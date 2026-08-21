@@ -1,7 +1,7 @@
 /**
  * scripts/release.ts - reeweb release entrypoint.
  *
- * Bumps ree-web's own package.json version and commits/pushes that bump,
+ * Bumps ree-web's own package.json version and commits/pushes the release,
  * then stages the `.releaseignore`-filtered source into the sibling public
  * checkout (`../reeweb`) for review. It never commits or pushes the public
  * repository - that stays a manual step.
@@ -51,8 +51,8 @@ function run_git(args: string[]): void {
 	if (result.exitCode !== 0) { throw new Error(`git ${args.join(" ")} failed`); }
 }
 
-function commit_and_push_version(version: string): void {
-	run_git(["add", "package.json"]);
+function commit_and_push_release(version: string): void {
+	run_git(["add", "-A"]);
 	run_git(["commit", "-m", `Bump version to ${version}`]);
 	run_git(["push", "origin", "main"]);
 }
@@ -93,7 +93,7 @@ async function release(): Promise<void> {
 		const version = bump_patch_version(current_version);
 		console.log(`Bumping package.json version ${current_version} -> ${version}`);
 		write_project_version(version);
-		commit_and_push_version(version);
+		commit_and_push_release(version);
 
 		assert_clean_public_checkout();
 	}
