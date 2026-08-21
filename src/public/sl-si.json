@@ -1,0 +1,45 @@
+{
+	"nav": {
+		"about": "O nas",
+		"blog": "Blog",
+		"contact": "Kontakt",
+		"home": "Domov"
+	},
+	"route_name": "",
+	"search": {
+		"placeholder": "Išči…",
+		"type_to_search": "Vnesite iskalni niz…"
+	},
+	"site_name": "Moja statična stran",
+	"ui": {
+		"feature_1_text": "Polna podpora za več jezikov s samodejnim premoščanjem. Vsaka stran se prikaže v vseh jezikih.",
+		"feature_1_title": "Večjezičnost",
+		"feature_2_text": "Zgrajeno izključno na Bunovih vmesnikih. Brez prevajalnikov, orodij za gradnjo ali npm install.",
+		"feature_2_title": "Brez odvisnosti",
+		"feature_3_text": "Uporabite skupne postavitve, komponente in prevode po straneh. Jezikovno različne predloge za popoln nadzor.",
+		"feature_3_title": "Prilagodljive predloge",
+		"language_names": {
+			"en-us": "Angleščina",
+			"sl-si": "Slovenščina"
+		},
+		"language_names_to": {
+			"en-us": "angleščino",
+			"sl-si": "slovenščino"
+		},
+		"learn_more": "Izvedi več →",
+		"pagination": {
+			"label": "Strani",
+			"next": "Naslednja",
+			"of": "od",
+			"previous": "Prejšnja",
+			"results": "rezultatov",
+			"showing": "Prikazano",
+			"to": "do",
+			"total_label": "skupaj"
+		},
+		"welcome_text": "Hitra večjezična statična stran, zgrajena z Bunom in .ree predlogami.",
+		"welcome_title": "Moja statična stran",
+		"starwars_title": "Letnice rojstva likov Vojne zvezd",
+		"framework_title": "Ogrodja"
+	}
+}

@@ -1,0 +1,24 @@
+{
+	"address": "123 Web Street, Developer City, DC 10001",
+	"email": "hello@example.com",
+	"phone": "+1 (555) 123-4567",
+	"route_name": "contact",
+	"social": [
+		{
+			"label": "GitHub",
+			"url": "https://github.com/example"
+		},
+		{
+			"label": "Twitter",
+			"url": "https://twitter.com/example"
+		}
+	],
+	"ui": {
+		"address_label": "Address",
+		"description": "Get in touch - we'd love to hear from you.",
+		"email_label": "Email",
+		"phone_label": "Phone",
+		"social_title": "Follow Us",
+		"title": "Contact Us"
+	}
+}
