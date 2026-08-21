@@ -13,7 +13,7 @@
 		"translation_root": "src/public",
 		"issue_repo": "reepolee/ree-web"
 	},
-	"version": "26.08.35",
+	"version": "26.08.37",
 	"private": false,
 	"license": "MIT",
 	"description": "Static site generator with .ree templates and multi-language support",
@@ -60,11 +60,7 @@
 		"naming:check": "bun scripts/naming_check.ts",
 		"test:replay:server": "bun run ssg && bun scripts/preview.ts --port 3099",
 		"test:replay": "bun scripts/test_replay.ts",
-		"remove:demo": "bun scripts/remove_demo_content.ts",
-		"release": "reettier && bun run scripts/release.ts",
-		"gh:release": "bun scripts/gh_release.ts",
-		"clean-up": "bun pm pkg delete scripts.gh:release scripts.release scripts.release:update-hashes scripts.clean-up",
-		"release:update-hashes": "bun run scripts/release.ts --update-hashes"
+		"remove:demo": "bun scripts/remove_demo_content.ts"
 	},
 	"bun-create": {
 		"postinstall": "bun scripts/install.ts"

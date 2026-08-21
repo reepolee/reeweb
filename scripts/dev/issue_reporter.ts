@@ -13,10 +13,10 @@
  * Screenshots (one or more, each with an optional label such as "Before"/"After")
  * are committed to the issue repo itself, on an orphan `screenshots` branch, via
  * the GitHub contents API - so they need no credentials beyond the `gh` login
- * already required above, and no third-party host. They are linked as
- * `github.com/<repo>/raw/screenshots/...`, which is the one URL form that renders
- * inside a private repo's issue: that host carries the reader's session cookie.
- * `raw.githubusercontent.com` links and relative paths both render broken.
+ * already required above, and no third-party host. Clickable links use authenticated
+ * `github.com/<repo>/blob/screenshots/...` URLs, while image sources use the matching
+ * authenticated `github.com/<repo>/raw/screenshots/...` URLs. The blob URL returns an
+ * HTML page and cannot be used as an image source.
  *
  * Ported from reepolee-dev's lib/issue_reporter.ts; dropped the session lookup
  * (ree-web's dev server has no auth) and the $lib/uuid wrapper (Bun native
@@ -104,11 +104,15 @@ async function ensure_assets_branch(repo: string): Promise<{ ok: true; } | { err
 	return { ok: true };
 }
 
-// The link must use the github.com/<repo>/raw/... host, NOT raw.githubusercontent.com.
-// Only github.com carries the reader's session cookie, so for a private repo it is the
-// only form that renders in an issue body - raw.githubusercontent.com and relative
-// paths both come out broken.
-async function upload_screenshot(repo: string, screenshot: File): Promise<{ public_url: string; } | { error: string; }> {
+export function screenshot_asset_url(repo: string, asset_path: string): string {
+	return `https://github.com/${repo}/blob/${ASSETS_BRANCH}/${asset_path}`;
+}
+
+export function screenshot_asset_raw_url(repo: string, asset_path: string): string {
+	return `https://github.com/${repo}/raw/${ASSETS_BRANCH}/${asset_path}`;
+}
+
+async function upload_screenshot(repo: string, screenshot: File): Promise<{ public_url: string; image_url: string; } | { error: string; }> {
 	const branch_result = await ensure_assets_branch(repo);
 	if ("error" in branch_result) { return branch_result; }
 
@@ -121,7 +125,10 @@ async function upload_screenshot(repo: string, screenshot: File): Promise<{ publ
 	const upload_result = await run_gh(["api", `repos/${repo}/contents/${asset_path}`, "--method", "PUT", "--input", "-"], payload);
 	if (!upload_result.ok) { return { error: upload_result.stderr || upload_result.stdout || "unknown gh error" }; }
 
-	return { public_url: `https://github.com/${repo}/raw/${ASSETS_BRANCH}/${asset_path}` };
+	return {
+		public_url: screenshot_asset_url(repo, asset_path),
+		image_url: screenshot_asset_raw_url(repo, asset_path),
+	};
 }
 
 export async function handle_create_issue(req: Request): Promise<Response> {
@@ -157,7 +164,7 @@ export async function handle_create_issue(req: Request): Promise<Response> {
 		if ("error" in upload_result) {
 			upload_errors.push(`${label}: ${upload_result.error}`);
 		} else {
-			image_lines.push(`![${label}](${upload_result.public_url})`);
+			image_lines.push(`[![${label}](${upload_result.image_url})](${upload_result.public_url})`);
 		}
 		index += 1;
 	}
