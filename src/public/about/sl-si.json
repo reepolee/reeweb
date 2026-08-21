@@ -1,0 +1,26 @@
+{
+	"highlights": [
+		{
+			"label": "Ustanovljeno",
+			"value": "2000"
+		},
+		{
+			"label": "Uporabnikov",
+			"value": "500+"
+		},
+		{
+			"label": "Jezikov",
+			"value": "2"
+		}
+	],
+	"route_name": "o-nas",
+	"ui": {
+		"description": "Gradimo orodja za sodobni splet.",
+		"mission_text": "Razvijalcem zagotoviti brezhibno izkušnjo pri gradnji podatkovno vodenih spletnih aplikacij z Bunom in našo predlogo.",
+		"mission_title": "Naše poslanstvo",
+		"slovenian_note": "To je slovenska različica strani z drugačno postavitvijo.",
+		"team_text": "Majhna predana ekipa, navdušena nad spletno zmogljivostjo, razvijalsko izkušnjo in čisto arhitekturo.",
+		"team_title": "Naša ekipa",
+		"title": "O nas"
+	}
+}

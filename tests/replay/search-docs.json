@@ -1,0 +1,92 @@
+{
+	"title": "English search opens a documentation result",
+	"timeout": 10000,
+	"steps": [
+		{
+			"type": "setViewport",
+			"width": 1920,
+			"height": 1080,
+			"deviceScaleFactor": 1,
+			"isMobile": false,
+			"hasTouch": false,
+			"isLandscape": true
+		},
+		{
+			"type": "navigate",
+			"url": "http://127.0.0.1:3099/en-us/"
+		},
+		{
+			"type": "waitForExpression",
+			"expression": "new Promise((resolve) => setTimeout(() => resolve(true), 2500))"
+		},
+		{
+			"type": "click",
+			"selectors": [
+				[
+					"[data-search-trigger]"
+				]
+			],
+			"offsetX": 40,
+			"offsetY": 12
+		},
+		{
+			"type": "waitForExpression",
+			"expression": "new Promise((resolve) => setTimeout(() => resolve(true), 2500))"
+		},
+		{
+			"type": "change",
+			"value": "translations",
+			"selectors": [
+				[
+					"#search-input"
+				],
+				[
+					"aria/Search this site"
+				]
+			]
+		},
+		{
+			"type": "waitForExpression",
+			"expression": "new Promise((resolve) => setTimeout(() => resolve(true), 2500))"
+		},
+		{
+			"type": "waitForElement",
+			"selectors": [
+				[
+					"#search-result-0"
+				]
+			],
+			"attributes": {
+				"role": "option"
+			}
+		},
+		{
+			"type": "click",
+			"selectors": [
+				[
+					"#search-result-0"
+				]
+			],
+			"offsetX": 20,
+			"offsetY": 20,
+			"assertedEvents": [
+				{
+					"type": "navigation",
+					"url": "http://127.0.0.1:3099/en-us/docs/translations/"
+				}
+			]
+		},
+		{
+			"type": "waitForExpression",
+			"expression": "new Promise((resolve) => setTimeout(() => resolve(true), 2500))"
+		},
+		{
+			"type": "waitForElement",
+			"selectors": [
+				[
+					"h1"
+				]
+			]
+		}
+	]
+}

@@ -1,0 +1,52 @@
+{
+	"scm.defaultViewMode": "tree",
+	"search.exclude": {
+		"**/*.test.ts": true,
+		"**/*.spec.ts": true
+	},
+	"files.associations": {
+		"*.ree": "ree"
+	},
+	"tailwindCSS.includeLanguages": {
+		"ree": "html"
+	},
+	"vsicons.associations.files": [
+		{
+			"icon": "ree",
+			"extensions": [
+				"ree"
+			],
+			"format": "svg"
+		}
+	],
+	"vsicons.associations.folders": [
+		{
+			"icon": "ree",
+			"extensions": [
+				"ree-templates"
+			],
+			"format": "svg"
+		}
+	],
+	"emeraldwalk.runonsave": {
+		"commands": [
+			{
+				"match": "\\.(js|ts|css)$",
+				"cmd": "reettier\"${file}\""
+			}
+		]
+	},
+	"files.exclude": {
+		"**/*.test.ts": true,
+		"**/*.spec.ts": true,
+		"**/.git": true,
+		"**/.svn": true,
+		"**/.hg": true,
+		"**/CVS": true,
+		"**/.DS_Store": true,
+		"**/Thumbs.db": true
+	},
+	"[html]": {
+		"editor.defaultFormatter": "vscode.html-language-features"
+	}
+}
