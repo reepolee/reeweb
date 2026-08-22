@@ -1,0 +1,39 @@
+{{
+	// simple-pagination - Previous / Next only (reconstruction of Laravel simple
+	// tailwind paginator). Custom element: the PaginationData object arrives via the
+	// data attribute. No windowing here - this variant never renders numbered links.
+	// Do not put markup-like tokens in these comments - the engine preprocessor
+	// scans comment text too.
+	const p = props.attributes ? props.attributes.data : null;
+	const has_data = !!p;
+	const visible = has_data && (p.has_pages || p.show_when_single_page);
+	const labels = has_data ? p.labels : {};
+	const show_prev = visible && (p.prev_url || p.always_show_prev_next);
+	const show_next = visible && (p.next_url || p.always_show_prev_next);
+	const link_base = "relative inline-flex items-center rounded-md border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50";
+	const link_disabled = "relative inline-flex items-center rounded-md border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-400 cursor-default";
+}}
+{#if visible}
+	<nav
+		role="navigation"
+		aria-label="{= labels.aria }"
+		class="flex items-center justify-between border-t border-neutral-200 pt-4">
+		{#if show_prev}
+			{#if p.prev_url}
+				<a href="{~ p.prev_url }" rel="prev" class="{~ link_base }">{= labels.previous}</a>
+			{:else}
+				<span aria-disabled="true" class="{~ link_disabled }">{= labels.previous}</span>
+			{/if}
+		{:else}
+			<span></span>
+		{/if}
+
+		{#if show_next}
+			{#if p.next_url}
+				<a href="{~ p.next_url }" rel="next" class="{~ link_base }">{= labels.next}</a>
+			{:else}
+				<span aria-disabled="true" class="{~ link_disabled }">{= labels.next}</span>
+			{/if}
+		{/if}
+	</nav>
+{/if}
