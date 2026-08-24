@@ -27,6 +27,11 @@
 			"sl-si": "Slovenščina"
 		},
 		"learn_more": "Learn More →",
+		"role_dev": "🔧 Developer mode — all features unlocked",
+		"role_guest": "🔒 Guest — sign in for full access",
+		"role_user": "👤 Welcome back, authenticated user",
+		"switch_pattern": "The {{ }} block pre-computes a 'role' string using if/else-if, then {#switch} dispatches cleanly. This is the idiomatic .ree pattern for multi-way branching — compute one value in JS, switch on it.",
+		"switch_pattern_title": "Switch Demo — Simulating else-if",
 		"pagination": {
 			"label": "Pagination",
 			"next": "Next",
@@ -38,6 +43,7 @@
 			"total_label": "total"
 		},
 		"welcome_text": "A blazing-fast multi-language static site built with Bun and .ree templates.",
+
 		"welcome_title": "Welcome to Ree Web",
 		"starwars_title": "Birth Years of Star Wars Characters",
 		"framework_title": "Frameworks"

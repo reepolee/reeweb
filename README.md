@@ -130,6 +130,7 @@ bun scripts/ssg.ts [options]
 | `{{ ... }}`                       | Raw JavaScript              | `{{ const x = items.length; }}`            |
 | `{#if cond }...{/if}`             | Conditional                 | `{#if is\_dev }...{/if}`                   |
 | `{#each list as item }...{/each}` | Loop (arrays & objects)     | `{#each items as item, i, key }...{/each}` |
+| `{#switch expr }...{#case v }...{/switch}` | Value dispatch (strict equality) | `{#switch role }...{#case "admin" }...{/switch}` |
 | `{#with expr }...{/with}`         | Scope block                 | `{#with author }{= name }{/with}`          |
 | `{#layout('path')}`               | Layout wrapper              | `{#layout("layout")}`                      |
 | `{#include('path')}`              | Include another template    | `{#include('partials/nav')}`               |

@@ -46,3 +46,20 @@
 		{/if}
 	</div>
 </div>
+
+<div class="data-section">
+	<h2>{_ ui.switch_pattern_title }</h2>
+
+	{{ const role = is_dev ? "dev" : user ? "user" : "guest"; }}
+
+	{#switch role}
+		{#case "dev"}
+			<p class="lead">{_ ui.role_dev }</p>
+		{#case "user"}
+			<p class="lead">{_ ui.role_user }</p>
+		{:else}
+			<p class="lead">{_ ui.role_guest }</p>
+	{/switch}
+
+	<p>{_ ui.switch_pattern }</p>
+</div>

@@ -27,6 +27,11 @@
 			"sl-si": "slovenščino"
 		},
 		"learn_more": "Izvedi več →",
+		"role_dev": "🔧 Razvijalski način — vse funkcije odklenjene",
+		"role_guest": "🔒 Gost — prijavite se za polni dostop",
+		"role_user": "👤 Dobrodošli nazaj, prijavljeni uporabnik",
+		"switch_pattern": "Blok {{ }} vnaprej izračuna niz 'role' z uporabo if/else-if, nato {#switch} čisto razveji. To je idiomatični .ree vzorec za večsmerno razvejanje — izračunaj eno vrednost v JS-ju in uporabi switch na njej.",
+		"switch_pattern_title": "Switch Demo — Simulacija else-if",
 		"pagination": {
 			"label": "Strani",
 			"next": "Naslednja",
