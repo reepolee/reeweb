@@ -1,0 +1,160 @@
+# reeweb (ReeWeb Static Site Generator)
+
+> A Bun-based static site generator with zero runtime dependencies - custom `.ree` templates with a shared template engine, multi-locale i18n, markdown pages, content collections with Zod validation, and statically-generated pagination. Output is a self-contained static site in `dist/` with no server, no database, and no runtime dependencies.
+
+Important notes:
+
+- **Zero runtime dependencies.** Dev dependencies are generation-time tooling only (`tailwindcss`, `@types/bun`, `@cloudflare/workers-types`). Bun's built-in APIs handle everything.
+- **Not a framework.** reeweb is a project template and toolkit that gives you a starting point for Bun-based static sites, not a framework you install as a dependency.
+- **Shared `.ree` engine.** Templates use the `.ree` extension with tags like `{= expr }` (escaped output), `{~ expr }` (raw HTML), `{_ path }` (translation lookup, escaped), `{- path }` (translation lookup, raw HTML), `{@ path }` (translation lookup rendered through markdown), `{{ code }}`, `{#if}`, `{#each}`, `{#with}`, `{#layout()}`, `{#include()}`, and `<component-name></component-name>` ReeTag custom-element syntax for component includes. The engine in `lib/` is shared with Reepolee and expected to diverge as each project adds its own needs; `bun run engine:check` reports where the local copy has drifted (informational, exits 0 unless `--enforce`).
+- **snake_case** on the server side (`.ts` files); kebab-case for client JavaScript (`.js` files).
+- **Multi-locale.** Ships with English (`en-us`) and Slovenian (`sl-si`) locales by default. Translations live in `{locale}.json` files (BCP 47 filenames) next to templates, loaded by `lib/i18n.ts`. URL localization is driven by `route_name` keys.
+- **Markdown.** `.md` files in `src/public/` are rendered through Bun's built-in markdown parser with frontmatter (YAML), layout selection, sidebar navigation, and server-side syntax highlighting.
+- **Content collections.** A `_schema.ts` exporting a Zod `schema` auto-registers a folder as a collection; the SSG validates every entry's frontmatter before rendering and fails loudly on violation.
+- **Static output.** `bun run ssg` renders every `.ree`/`.md` template per locale once and writes static HTML to `dist/` - ready to upload anywhere (Cloudflare Workers, Netlify, any static host).
+
+## Architecture
+
+**Entry point:** [scripts/ssg.ts](https://github.com/reepolee/reeweb/blob/main/scripts/ssg.ts) (thin entrypoint over `scripts/ssg/` modules)
+**Dev server:** [scripts/dev.ts](https://github.com/reepolee/reeweb/blob/main/scripts/dev.ts) (thin entrypoint over `scripts/dev/` modules; `bun dev` runs `scripts/dev/orchestrate.ts`)
+**Output:** `dist/` with static HTML + assets (no files written by the dev server)
+**Start with:** `bun dev` (dev) / `bun run ssg` (production generation)
+
+### SSG pipeline (`scripts/ssg/`)
+
+`scripts/ssg.ts` is a thin entrypoint; the work lives in `scripts/ssg/` modules:
+
+- `pipeline.ts` - orchestrator
+- `cli.ts` - argument parsing
+- `translation_merge.ts` - translation tree navigation + merge
+- `markdown.ts` - markdown file locale resolution + title extraction
+- `routing.ts` - URL/path resolution
+- `seo.ts` - hreflang, sitemap, robots
+- `page_data.ts` - shared render-data object
+- `collections.ts` - frontmatter schema validation (Zod, vendored)
+- `sidebar.ts` - sidebar navigation
+- `render_templates.ts` / `render_markdown.ts` / `render_pagination.ts` - render phases
+- `write_page.ts` - shared output helper (page-local JS bundling + HTML write)
+- `group_js.ts` - page-local JS bundling
+- `print_page.ts` - render a single page to stdout (`ssg:print-url`)
+
+Walks `src/public/`, renders `.ree`/`.md` per locale, copies static assets to `dist/`.
+
+### Dev server (`scripts/dev/`)
+
+`bun dev` runs `scripts/dev/orchestrate.ts`: one-shot setup steps (dynamic asset sync, image preparation, initial CSS build), then the Tailwind CSS watcher (`--watch=always`) and the dev server child process (`scripts/dev.ts`) side by side. Dev-server modules live in `scripts/dev/` (`site_state.ts`, `resolve.ts`, `render.ts`, `pagination.ts`, `static_files.ts`, `live_reload.ts`, `watcher.ts`, etc.).
+
+### Shared utilities (`scripts/shared/`)
+
+Both SSG and dev scripts import common utilities: `markdown.ts`, `page_data.ts`, `pagination.ts`, `routing.ts`, `sidebar.ts`.
+
+### Key files
+
+| File                                                                                          | Role                                                  |
+| --------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| [scripts/ssg.ts](https://github.com/reepolee/reeweb/blob/main/scripts/ssg.ts)                 | Static site generator entrypoint                      |
+| [scripts/dev.ts](https://github.com/reepolee/reeweb/blob/main/scripts/dev.ts)                 | Dev server entrypoint                                 |
+| `src/public/`                                                                                 | Source directory - .ree templates, .md files, translations, static assets |
+| `src/components/`                                                                             | ReeTag component .ree files (custom-element syntax)   |
+| [lib/template_engine.ts](https://github.com/reepolee/reeweb/blob/main/lib/template_engine.ts) | Shared .ree engine orchestrator + `lib/template/` modules |
+| [lib/static_site.ts](https://github.com/reepolee/reeweb/blob/main/lib/static_site.ts)         | Shared helpers: walk_dir, frontmatter, route map      |
+| [lib/i18n.ts](https://github.com/reepolee/reeweb/blob/main/lib/i18n.ts)                       | Translation file loader (walk + merge + fallback)     |
+| [config/supported_locales.ts](https://github.com/reepolee/reeweb/blob/main/config/supported_locales.ts) | Active locale list (BCP 47), display names, default, aliases |
+| [lib/hooks.ts](https://github.com/reepolee/reeweb/blob/main/lib/hooks.ts)                     | Project hook contract (typed, optional)               |
+
+## Templates & Components
+
+`.ree` files in `src/public/` are compiled by `lib/template_engine.ts` (orchestrator) + `lib/template/` modules (`compiler.ts`, `custom_elements.ts`, `include_handler.ts`, `include_resolver.ts`, `types.ts`).
+
+- **ReeTags** - reusable `.ree` snippets in `src/components/`, invoked as custom HTML elements: `<my-h1 class="heading">title</my-h1>`. Attributes arrive under `props.attributes`; slot content under `props.children`.
+- **Layouts** - `layout.ree` wraps page content via `{#layout("layout")}`. Per-section layouts via frontmatter (`layout: academic` → resolves `academic.layout.ree`).
+- **Includes** - `{#include('path')}` pulls another template inline; supports `$components/`, `$lib/`, relative, and views-root-relative paths.
+- **Template helpers** - in `lib/template_helpers.ts`: `url`, `localized_path`, `nav_label`, `is_current`, `key_values`, date/time formatting, `display_currency`, `display_percent`, `yes_no`, `pill`, `tags`, `human_bytes`, `urlencode`/`urldecode`, `tw_merge`, `highlight`, `webp`/`jpeg`/`avif`, `srcset`. Project-specific helpers go in `src/lib/project_helpers.ts`.
+
+## Data Loading
+
+Templates can have sibling `.ts` files exporting `load_template_data()`:
+
+```typescript
+// src/public/index.ts (sibling to src/public/index.ree)
+export async function load_template_data(): Promise<Record<string, any>> {
+    return { posts: await fetchPosts() };
+}
+```
+
+Called on every request in `bun run dev` and once per page during `bun run ssg`. Failures are caught, logged, and return `{}`.
+
+**Fetching from reepolee:** `src/lib/reepolee_api.ts` provides `fetch_collection()` and `fetch_record()` for fetching data from a running reepolee instance in agent mode. Requires `REEPOLEE_API_URL` set in `.env` (e.g. `http://localhost:2500`). `bun run dynamic:sync` mirrors Reepolee-managed images/files into `assets/images/dynamic/` and `assets/files/dynamic/` before SSG.
+
+## Content Collections
+
+A `_schema.ts` exporting a Zod `schema` in any folder under `src/public/` auto-registers that folder as a collection:
+
+```ts
+// src/public/blog/_schema.ts
+import { z } from "$vendor/zod.min.js";
+export const schema = z.object({
+    title:        z.string().min(1),
+    published_at: z.coerce.date(),
+}).passthrough();
+```
+
+`bun run ssg` validates every entry before rendering and fails loudly on violation. Zod is vendored at `vendor/zod.min.js` - validation is SSG-only, zero runtime dependency.
+
+## Pagination
+
+Statically-generated pagination, configured in `config/pagination.ts` (per-route, `per_page`, `path_segment`, `variant`). For each registered route, the SSG collects its records, chunks them by `per_page`, and renders the route's `index.ree` once per page (`/blog/`, `/blog/2/`, per-locale variants). Records can come from markdown or from an external source via `load_records(locale)` when `source: "loader"`.
+
+## Prerequisites & Services
+
+### System binaries (must be pre-installed)
+
+| Tool                               | Purpose                                                                           | Where used                               |
+| ---------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------- |
+| **Bun**                            | Runtime - the entire project runs on Bun                                          | Everything                               |
+| **libvips** (`vips`)               | Open Graph image generation (`og:images`) and responsive image preparation        | `scripts/generate_og_images.ts`, `scripts/prepare_images.ts` |
+
+### Globally installed CLI tools (via `bun get:pre`)
+
+| Tool                  | Purpose                                                                          | Installed via      |
+| --------------------- | -------------------------------------------------------------------------------- | ------------------ |
+| **@tailwindcss/cli**  | Tailwind v4 CSS compilation (`css:build`, `css:watch`)                           | `bun get:tw`       |
+| **reettier**          | Code formatter - formats .ree, .ts, .js, .css                                    | `bun get:reettier` |
+| **reesql**            | SQL formatter                                                                     | `bun get:reesql`   |
+
+### Vendored packages (no npm install needed at runtime)
+
+Downloaded via `bun get:pre` scripts into `vendor/` and imported via `$vendor/` path alias:
+
+| Package                          | Source            | Local path                    | Purpose                                                            |
+| -------------------------------- | ----------------- | ----------------------------- | ------------------------------------------------------------------ |
+| **Zod v4.4.3**                   | jsDelivr CDN      | `vendor/zod.min.js`           | Content collection schema validation (SSG-only)                   |
+| **highlight.js v11.12.0**        | jsDelivr CDN      | `vendor/highlight.min.js`     | Code syntax highlighting (server-side)                            |
+
+These are committed to the repo - no npm install or CDN fetch needed after setup.
+
+### External services (all optional, configured via `.env`)
+
+| Service              | When needed                                                       | Env var                              |
+| -------------------- | ----------------------------------------------------------------- | ------------------------------------ |
+| **Reepolee (agent)** | Fetch live data / sync dynamic assets from a reepolee instance    | `REEPOLEE_API_URL`                   |
+| **Cloudflare**       | Deploy with `bun run cf:deploy` / share with `bun run cf:share`   | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` |
+
+## Commands
+
+- **Development**: `bun dev` (image prep + CSS watch + dev server via `scripts/dev/orchestrate.ts`), `bun run development` (dev server only).
+- **CSS**: `bun run css:build` (minified; rebuilt automatically by `bun dev`'s watcher).
+- **Production**: `bun run ssg` (dynamic sync + images + CSS + HTML + OG images + sitemap + RSS + search index), `bun run preview` (serves `./dist`).
+- **Static generation**: `bun scripts/ssg.ts [--public ./src/public] [--dist ./dist] [--base-url <url>] [--site-url https://example.com] [--verbose]` (`--base-url`/`--site-url` required, or set `BASE_URL`/`SITE_URL` in `.env`).
+- **Testing & formatting**: `bun test`, `bun test --watch`, `bun run format` (reettier), `bun run vendor:check`, `bun run naming:check`, `bun run engine:check` (engine drift vs reepolee).
+- **Deploy**: `bun run cf:deploy` (Cloudflare Workers), `bun run cf:share` (Wrangler tunnel).
+- **MCP server**: `bun run mcp` (runs [scripts/mcp/index.ts](https://github.com/reepolee/reeweb/blob/main/scripts/mcp/index.ts)).
+- **Project bootstrap**: `bun run reeweb:install` (non-interactive; also run by `bun create reepolee/reeweb`).
+
+## Optional / Reference
+
+- [Bun SQL API reference](https://bun.sh/docs/runtime/sql): Bun's built-in SQL API (used by data loaders against external databases).
+- [Bun Redis client reference](https://bun.sh/docs/api/redis): Bun's built-in Redis client API.
+- [Temporal API reference](https://tc39.es/proposal-temporal/docs): TC39 Temporal proposal used for timezone-aware date/time handling (Bun-native).
+- [Zod validation reference](https://zod.dev): Runtime validation used for content collections (vendored at `vendor/zod.min.js`).
+- [Tailwind CSS v4](https://tailwindcss.com/docs): CSS framework for styling (standalone CLI, not a bundler plugin).
