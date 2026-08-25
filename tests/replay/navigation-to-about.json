@@ -1,0 +1,57 @@
+{
+	"title": "English navigation reaches About",
+	"timeout": 10000,
+	"steps": [
+		{
+			"type": "setViewport",
+			"width": 1920,
+			"height": 1080,
+			"deviceScaleFactor": 1,
+			"isMobile": false,
+			"hasTouch": false,
+			"isLandscape": true
+		},
+		{
+			"type": "navigate",
+			"url": "http://127.0.0.1:3099/en-us/"
+		},
+		{
+			"type": "waitForExpression",
+			"expression": "new Promise((resolve) => setTimeout(() => resolve(true), 2500))"
+		},
+		{
+			"type": "click",
+			"selectors": [
+				[
+					"aria/About"
+				],
+				[
+					"a[href=\"/en-us/about/\"]"
+				]
+			],
+			"offsetX": 24,
+			"offsetY": 12,
+			"assertedEvents": [
+				{
+					"type": "navigation",
+					"url": "http://127.0.0.1:3099/en-us/about/"
+				}
+			]
+		},
+		{
+			"type": "waitForExpression",
+			"expression": "new Promise((resolve) => setTimeout(() => resolve(true), 2500))"
+		},
+		{
+			"type": "waitForElement",
+			"selectors": [
+				[
+					"[data-element=\"page_title\"]"
+				]
+			],
+			"attributes": {
+				"data-element": "page_title"
+			}
+		}
+	]
+}

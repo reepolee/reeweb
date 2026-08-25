@@ -1,0 +1,272 @@
+/**
+* src/css/academic.css
+*
+* Academic paper layout — a clean, print-inspired stylesheet for the
+* `academic.layout.ree` template. Designed to feel like a LaTeX-rendered PDF
+* on screen: serif body, generous measure, subtle paper background.
+*/
+
+.paper {
+	max-width: 50rem;
+	margin: 2rem auto;
+	padding: 2.5rem 3rem;
+	background: #fff;
+	border: 1px solid #e2e8f0;
+	border-radius: 8px;
+	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+	font-family: Georgia, "Times New Roman", Times, serif;
+	color: #1a1a2e;
+	line-height: 1.7;
+}
+
+/* ─── Header ─── */
+
+.paper-header {
+	text-align: center;
+	margin-bottom: 1.5rem;
+}
+
+.paper-title {
+	font-size: 1.75rem;
+	font-weight: 700;
+	margin-bottom: 1.25rem;
+	line-height: 1.2;
+	color: #0c0c0e;
+}
+
+.paper-authors {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 1.5rem 2.5rem;
+	margin-bottom: 1rem;
+}
+
+.author {
+	font-size: 0.9rem;
+	line-height: 1.5;
+	max-width: 16rem;
+}
+
+.author-name {
+	font-weight: 600;
+	color: #1a1a2e;
+}
+
+.author-department,
+.author-affiliation,
+.author-location,
+.author-email,
+.author-orcid {
+	font-size: 0.8rem;
+	color: #475569;
+}
+
+.author-email {
+	font-family: "SF Mono", "Fira Code", monospace;
+	font-size: 0.75rem;
+}
+
+.paper-meta {
+	font-size: 0.8rem;
+	color: #64748b;
+	display: flex;
+	gap: 1.5rem;
+	justify-content: center;
+	flex-wrap: wrap;
+}
+
+/* ─── Rules ─── */
+
+.section-rule {
+	border: none;
+	border-top: 1px solid #d4d2c8;
+	margin: 1.5rem 0;
+}
+
+/* ─── Abstract ─── */
+
+.abstract-box {
+	background: #f8f9fa;
+	border-left: 3px solid #2563eb;
+	padding: 0;
+	border-radius: 0 6px 6px 0;
+	margin: 1.5rem 0 2rem;
+}
+
+.abstract-inner {
+	padding: 1rem 1.25rem;
+}
+
+.abstract-title {
+	font-weight: 700;
+	font-size: 0.85rem;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: #2563eb;
+	display: block;
+	margin-bottom: 0.5rem;
+}
+
+.abstract-content {
+	font-size: 0.9rem;
+	color: #334155;
+	line-height: 1.6;
+	display: block;
+}
+
+.keywords {
+	margin-top: 0.75rem;
+	font-size: 0.8rem;
+	color: #475569;
+}
+
+.keywords-label {
+	font-weight: 600;
+	color: #64748b;
+}
+
+/* ─── Body ─── */
+
+.paper-body {
+	font-size: 1rem;
+	line-height: 1.8;
+	margin: 1.5rem 0;
+}
+
+.paper-body p {
+	margin-bottom: 1rem;
+	text-align: justify;
+}
+
+.paper-body h2 {
+	font-size: 1.35rem;
+	font-weight: 700;
+	margin-top: 2rem;
+	margin-bottom: 0.75rem;
+	color: #0c0c0e;
+	border-bottom: 1px solid #e2e8f0;
+	padding-bottom: 0.35rem;
+}
+
+.paper-body h3 {
+	font-size: 1.1rem;
+	font-weight: 600;
+	margin-top: 1.5rem;
+	margin-bottom: 0.5rem;
+	color: #1a1a2e;
+}
+
+.paper-body ul,
+.paper-body ol {
+	margin-bottom: 1rem;
+	padding-left: 1.5rem;
+}
+
+.paper-body li {
+	margin-bottom: 0.3rem;
+}
+
+.paper-body pre {
+	background: #1e293b;
+	color: #e2e8f0;
+	padding: 1rem 1.25rem;
+	border-radius: 6px;
+	overflow-x: auto;
+	margin-bottom: 1.25rem;
+	font-size: 0.8rem;
+	font-family: "SF Mono", "Fira Code", monospace;
+	line-height: 1.5;
+}
+
+.paper-body code {
+	background: #f1f5f9;
+	padding: 0.15rem 0.35rem;
+	border-radius: 3px;
+	font-size: 0.85rem;
+	font-family: "SF Mono", "Fira Code", monospace;
+}
+
+.paper-body pre code {
+	background: transparent;
+	padding: 0;
+	font-size: inherit;
+}
+
+.paper-body blockquote {
+	margin: 1rem 0;
+	padding: 0.5rem 1rem;
+	border-left: 3px solid #e94560;
+	background: #faf5ff;
+	border-radius: 0 4px 4px 0;
+	color: #475569;
+	font-style: italic;
+}
+
+/* ─── Acknowledgment ─── */
+
+.acknowledgment {
+	margin: 2rem 0 1rem;
+	padding: 1rem 1.25rem;
+	background: #f8f9fa;
+	border-radius: 6px;
+	font-size: 0.85rem;
+	color: #475569;
+}
+
+.acknowledgment h2 {
+	font-size: 0.9rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: #64748b;
+	margin-bottom: 0.5rem;
+}
+
+/* ─── References ─── */
+
+.references {
+	margin: 2rem 0 0;
+	padding: 1.25rem 0 0;
+	border-top: 1px solid #d4d2c8;
+}
+
+.references h2 {
+	font-size: 0.9rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: #64748b;
+	margin-bottom: 0.75rem;
+}
+
+.references div {
+	font-size: 0.85rem;
+	color: #475569;
+	line-height: 1.6;
+}
+
+/* ─── Footer ─── */
+
+.paper-footer {
+	margin-top: 2rem;
+	padding-top: 1rem;
+	border-top: 1px solid #e2e8f0;
+	font-size: 0.8rem;
+	color: #94a3b8;
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+
+/* ─── Print ─── */
+
+@media print {
+	.paper {
+		max-width: none;
+		margin: 0;
+		padding: 0;
+		border: none;
+		box-shadow: none;
+	}
+}
