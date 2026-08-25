@@ -17,6 +17,7 @@ Important notes:
 
 **Entry point:** [scripts/ssg.ts](https://github.com/reepolee/reeweb/blob/main/scripts/ssg.ts) (thin entrypoint over `scripts/ssg/` modules)
 **Dev server:** [scripts/dev.ts](https://github.com/reepolee/reeweb/blob/main/scripts/dev.ts) (thin entrypoint over `scripts/dev/` modules; `bun dev` runs `scripts/dev/orchestrate.ts`)
+**Publisher:** [scripts/publisher.ts](https://github.com/reepolee/reeweb/blob/main/scripts/publisher.ts) (thin entrypoint over `scripts/publisher/`; git watch, render, preview, deploy)
 **Output:** `dist/` with static HTML + assets (no files written by the dev server)
 **Start with:** `bun dev` (dev) / `bun run ssg` (production generation)
 
