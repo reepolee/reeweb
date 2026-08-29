@@ -2,6 +2,7 @@
 @import "../../vendor/highlight-atom-one-dark.min.css";
 @import "./academic.css";
 @source "../lib";
+@source "../../../scripts/dev";
 
 @theme {
 	--color-brand: #b40000;
@@ -802,6 +803,115 @@ pre code.hljs {
    grammar produces. */
 .hljs-property {
 	color: #61aeee;
+}
+
+/* markdown-editor - WYSIWYG description field for the dev issue reporter
+   dialog (scripts/dev/markdown-editor.js, injected by the dev server). Plain
+   CSS because the component builds its internal classes at runtime, outside
+   the Tailwind scan. Colours map to ree-web's palette (slate-300 border,
+   slate-100 toolbar, bg-card surface). */
+markdown-editor {
+	border: 1px solid #d1d5db;
+	border-radius: 6px;
+	display: block;
+	overflow: hidden;
+}
+
+markdown-editor .markdown-editor-toolbar {
+	background: #f1f5f9;
+	border-bottom: 1px solid #d1d5db;
+	gap: 0.25rem;
+	padding: 0.375rem;
+	display: flex;
+}
+
+markdown-editor .markdown-editor-btn {
+	cursor: pointer;
+	border-radius: 6px;
+	padding: 0.25rem 0.5rem;
+	font-size: 0.75rem;
+	font-weight: 600;
+	background: 0 0;
+	border: 1px solid transparent;
+	min-width: 1.75rem;
+}
+
+markdown-editor .markdown-editor-btn:hover {
+	background-color: #e2e8f0;
+}
+
+markdown-editor .markdown-editor-surface {
+	background: #fefefe;
+	outline: none;
+	min-height: 200px;
+	max-height: 640px;
+	padding: 0.75rem 1rem;
+	line-height: 1.6;
+	overflow-y: auto;
+}
+
+markdown-editor .markdown-editor-surface[data-empty="true"]::before {
+	content: attr(data-placeholder);
+	color: #64748b;
+	white-space: pre-wrap;
+	pointer-events: none;
+}
+
+markdown-editor .markdown-editor-surface p {
+	margin-bottom: 0.75rem;
+}
+
+markdown-editor .markdown-editor-surface h1,
+markdown-editor .markdown-editor-surface h2,
+markdown-editor .markdown-editor-surface h3 {
+	margin-top: 1rem;
+	margin-bottom: 0.5rem;
+	font-weight: 600;
+}
+
+markdown-editor .markdown-editor-surface h1 {
+	font-size: 1.5rem;
+}
+
+markdown-editor .markdown-editor-surface h2 {
+	font-size: 1.25rem;
+}
+
+markdown-editor .markdown-editor-surface h3 {
+	font-size: 1.1rem;
+}
+
+markdown-editor .markdown-editor-surface ul,
+markdown-editor .markdown-editor-surface ol {
+	margin-bottom: 0.75rem;
+	padding-left: 1.5rem;
+}
+
+markdown-editor .markdown-editor-surface blockquote {
+	border-left: 4px solid #d1d5db;
+	color: #64748b;
+	margin-bottom: 0.75rem;
+	padding-left: 1rem;
+}
+
+markdown-editor .markdown-editor-surface code {
+	background: rgba(100, 116, 139, 0.2);
+	border-radius: 6px;
+	padding: 0.125rem 0.375rem;
+	font-family: monospace;
+	font-size: 85%;
+}
+
+markdown-editor .markdown-editor-textarea {
+	border: 0;
+	border-radius: 0;
+	outline: none;
+	width: 100%;
+	min-height: 200px;
+	padding: 0.75rem 1rem;
+	font-family: monospace;
+	line-height: 1.6;
+	background: #fefefe;
 }
 
 @media print {

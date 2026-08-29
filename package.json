@@ -10,10 +10,12 @@
 			"src/components"
 		],
 		"translation_provider": "route-json",
-		"translation_root": "src/public",
+		"translation_roots": [
+			"src/public"
+		],
 		"issue_repo": "reepolee/ree-web"
 	},
-	"version": "26.08.41",
+	"version": "26.08.42",
 	"private": false,
 	"license": "MIT",
 	"description": "Static site generator with .ree templates and multi-language support",
@@ -52,7 +54,7 @@
 		"get:reettier": "bun scripts/cli.ts reettier",
 		"get:reesql": "bun scripts/cli.ts reesql",
 		"get:vips": "bun scripts/cli.ts vips --version=8.18.4",
-		"get:zod": "mkdir -p vendor && curl -fsSL https://cdn.jsdelivr.net/npm/zod@4.4.3/+esm -o vendor/zod.min.js && curl -fsSL https://cdn.jsdelivr.net/npm/zod@4.4.3/LICENSE -o vendor/zod.min.js.LICENSE.txt",
+		"get:zod": "mkdir -p vendor && curl -fsSL https://cdn.jsdelivr.net/npm/zod@4.5.4/+esm -o vendor/zod.min.js && curl -fsSL https://cdn.jsdelivr.net/npm/zod@4.5.4/LICENSE -o vendor/zod.min.js.LICENSE.txt",
 		"get:hljs": "mkdir -p vendor && curl -fsSL https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.12.0/highlight.min.js -o vendor/highlight.min.js && curl -fsSL https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.12.0/styles/atom-one-dark.min.css -o vendor/highlight-atom-one-dark.min.css && curl -fsSL https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.12.0/LICENSE -o vendor/highlight.min.js.LICENSE.txt && curl -fsSL https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.12.0/LICENSE -o vendor/highlight-atom-one-dark.min.css.LICENSE.txt",
 		"get:pre": "bun scripts/install/prerequisites.ts",
 		"vendor:check": "bun scripts/vendor_check.ts",
@@ -66,7 +68,7 @@
 		"postinstall": "bun scripts/install.ts"
 	},
 	"devDependencies": {
-		"@cloudflare/workers-types": "5.20260818.1",
+		"@cloudflare/workers-types": "5.20260829.1",
 		"@types/bun": "1.4.0",
 		"tailwind-merge": "3.6.0"
 	}

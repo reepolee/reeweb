@@ -27,8 +27,14 @@ describe("inject_live_reload", () => {
 		expect(out.match(/function connectLiveReload/g)?.length).toBe(1);
 	});
 
-	test("injects the live-reload, inspector, and issue reporter clients", async () => {
+	test("injects the live-reload, inspector, markdown-editor, and issue reporter clients", async () => {
 		const out = await inject_live_reload("<body></body>");
-		expect(out.match(/<script>/g)?.length).toBe(3);
+		expect(out.match(/<script>/g)?.length).toBe(4);
+		// markdown-editor defines the custom element used by the issue reporter
+		// dialog's Description field, and must be injected before the reporter.
+		// (The livereload client also mentions "issue-reporter-dialog", so the
+		// order check uses "issue-reporter-form", which only the reporter has.)
+		expect(out.indexOf("customElements.define(\"markdown-editor\"")).toBeGreaterThan(-1);
+		expect(out.indexOf("customElements.define(\"markdown-editor\"")).toBeLessThan(out.indexOf("issue-reporter-form"));
 	});
 });

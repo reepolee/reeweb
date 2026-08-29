@@ -48,7 +48,7 @@ import { handle_class_message } from "./dev/class_ws";
 import type { DevContext } from "./dev/context";
 import { clients, notify_clients } from "./dev/live_reload";
 import { handle_i18n_message } from "./dev/i18n_ws";
-import { handle_create_issue } from "./dev/issue_reporter";
+import { handle_create_issue, handle_issue_repos } from "./dev/issue_reporter";
 import { handle_open_request } from "./dev/open_in_editor";
 import { match_pagination, render_pagination } from "./dev/pagination";
 import { kill_port } from "./dev/port_release";
@@ -213,6 +213,9 @@ if (!is_first_run) {
 
 				// New Issue: file a GitHub issue from the browser (Ctrl+Shift+I, dev only).
 				if (req.method === "POST" && pathname === "/__issue") { return handle_create_issue(req); }
+
+				// New Issue: the configured repo list for the dialog's dropdown (dev only).
+				if (req.method === "GET" && pathname === "/__issue_repos") { return handle_issue_repos(req); }
 
 				// Non-canonical locale segment (wrong case, missing trailing slash,
 				// or a bare language subtag like "/de/") -> permanent redirect to the

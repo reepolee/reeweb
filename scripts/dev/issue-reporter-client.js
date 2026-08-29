@@ -6,11 +6,18 @@
  * only, so absent from the SSG build). Ctrl+Shift+I opens a dialog for filing a
  * GitHub issue against the repo named in package.json "ree.issue_repo".
  *
- * Ported from reepolee-dev's lib/issue_reporter_client.js. The only real change
- * is styling: reepolee's Tailwind semantic tokens (bg-surface, text-danger, ...)
- * do not exist in ree-web, and injected scripts are not scanned by Tailwind
- * anyway, so every style is inline - the dialog must render identically before
- * the page stylesheet loads and across livereload.
+ * Ported from reepolee-dev's lib/issue_reporter_client.js, including the repo
+ * dropdown (GET /__issue_repos), the crop tool, the double-arrow tool, and the
+ * annotation text/arrow refinements. Styling uses Tailwind utilities (ree-web's
+ * own Tailwind build - src/css/style.css @source includes scripts/dev so the
+ * classes here are compiled). ree-web's theme tokens (--color-bg-card, --color-
+ * bg-page, --color-brand) generate double-prefixed utilities like bg-bg-card,
+ * so reepolee's semantic tokens map to concrete utilities: bg-surface-raised ->
+ * bg-bg-card, border-border -> border-slate-300, bg-surface -> bg-slate-50,
+ * text-danger -> text-red-600, text-success -> text-green-600, text-warning ->
+ * text-amber-600, text-text-tertiary -> text-slate-500. The dialog needs an
+ * explicit m-auto because ree-web's global reset (* { margin: 0 }) overrides
+ * the native dialog centering rule.
  */
 
 const GITHUB_LABELS = [
@@ -29,75 +36,118 @@ let dialog_el = null;
 let filed_from_url = null; // page URL captured when the dialog opened
 let snapshots = []; // ordered list of { label, blob }
 
-const INPUT_STYLE = "width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:4px;background:#f8fafc;padding:6px 8px;color:#1a1a2e;font:inherit";
-const BTN_STYLE = "cursor:pointer;border:1px solid #cbd5e1;border-radius:4px;background:#f8fafc;padding:4px 12px;color:#1a1a2e;font:inherit";
+// Populate the Repo dropdown from GET /__issue_repos (first entry is the
+// default shown by the server). The endpoint degrades to an empty list when
+// no repos are configured, in which case the select keeps its single disabled
+// prompt option and the server falls back to its own default behavior.
+async function load_repos() {
+	if (!dialog_el) return;
+	const select = dialog_el.querySelector("#issue-reporter-repo");
+	if (!select) return;
+	try {
+		const response = await fetch("/__issue_repos");
+		const data = await response.json();
+		const repos = Array.isArray(data?.repos) ? data.repos : [];
+		select.innerHTML = "";
+		if (repos.length === 0) {
+			const option = document.createElement("option");
+			option.value = "";
+			option.textContent = "No repo configured";
+			option.disabled = true;
+			select.appendChild(option);
+			return;
+		}
+		repos.forEach((repo, index) => {
+			const option = document.createElement("option");
+			option.value = repo;
+			option.textContent = repo;
+			if (index === 0) option.selected = true;
+			select.appendChild(option);
+		});
+	} catch {
+		const option = document.createElement("option");
+		option.value = "";
+		option.textContent = "No repo configured";
+		option.disabled = true;
+		select.appendChild(option);
+	}
+}
+
+const INPUT_STYLE = "w-full box-border rounded border border-slate-300 bg-slate-50 px-2 py-1.5 text-[#1a1a2e]";
 
 function build_dialog() {
 	const dialog = document.createElement("dialog");
 	dialog.id = "issue-reporter-dialog";
 	// showModal() centers the dialog via the native `margin: auto` + `inset: 0`
 	// rule, but the page's global reset (`* { margin: 0 }`) overrides that margin
-	// and pins the dialog to the top-left. Set it back inline so the dialog stays
-	// centered regardless of the page stylesheet.
-	dialog.style.cssText = "width:520px;max-width:92vw;margin:auto;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:0;color:#1a1a2e;font:14px/1.5 system-ui,sans-serif;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1),0 4px 6px -4px rgba(0,0,0,0.1)";
+	// and pins the dialog to the top-left. m-auto restores it (a class beats the
+	// universal reset), so the dialog stays centered on any page.
+	dialog.className = "m-auto w-[520px] max-w-[92vw] rounded-[10px] border border-slate-200 bg-bg-card text-[#1a1a2e] shadow-lg";
 
 	const labels_html = GITHUB_LABELS.map((label) => `
-		<label style="margin:2px 10px 2px 0;display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
+		<label class="my-0.5 mr-2.5 inline-flex cursor-pointer items-center gap-1 text-[13px]">
 			<input type="checkbox" name="labels" value="${label.name}" />
-			<span style="display:inline-block;height:10px;width:10px;border-radius:999px;border:1px solid #cbd5e1;background:${label.color}"></span>
+			<span class="inline-block h-2.5 w-2.5 rounded-full border border-slate-300" style="background:${label.color}"></span>
 			${label.name}
 		</label>
 	`).join("");
 
 	dialog.innerHTML = `
-		<form id="issue-reporter-form" style="display:flex;flex-direction:column;gap:12px;padding:20px">
-			<h2 style="margin:0;font-size:16px;font-weight:600">New GitHub Issue</h2>
+		<form id="issue-reporter-form" class="flex flex-col gap-3 p-5 text-sm">
+			<h2 class="m-0 text-base font-semibold">New GitHub Issue</h2>
 
-			<label style="display:flex;flex-direction:column;gap:4px">
+			<label class="flex flex-col gap-1">
+				Repo:
+				<select name="repo" id="issue-reporter-repo" class="${INPUT_STYLE}">
+					<option value="">Loading…</option>
+				</select>
+			</label>
+
+			<label class="flex flex-col gap-1">
 				Title:
-				<input type="text" name="title" required style="${INPUT_STYLE}" />
+				<input type="text" name="title" required class="${INPUT_STYLE}" />
 			</label>
 
 			<div>
-				<div style="margin-bottom:4px">Labels:</div>
+				<div class="mb-1">Labels:</div>
 				${labels_html}
 			</div>
 
-			<label style="display:flex;flex-direction:column;gap:4px">
-				Description:
-				<textarea name="description" rows="6" style="${INPUT_STYLE};resize:vertical"></textarea>
-			</label>
-
-			<div>
-				<div style="margin-bottom:4px">Screenshots:</div>
-
-				<div style="margin-bottom:6px;display:flex;flex-wrap:wrap;align-items:center;gap:8px">
-					<button type="button" id="issue-reporter-capture-before" class="capture-btn" style="${BTN_STYLE}">Capture before state</button>
-					<div id="issue-reporter-before-slot" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px"></div>
-				</div>
-
-				<div style="margin-bottom:6px;display:flex;flex-wrap:wrap;align-items:center;gap:8px">
-					<button type="button" id="issue-reporter-capture-after" class="capture-btn" style="${BTN_STYLE}">Capture after state</button>
-					<div id="issue-reporter-after-slot" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px"></div>
-				</div>
-
-				<div style="margin-bottom:6px;display:flex;flex-wrap:wrap;align-items:center;gap:8px">
-					<button type="button" id="issue-reporter-add-another" class="capture-btn" style="${BTN_STYLE}">Add another</button>
-					<button type="button" id="issue-reporter-paste" style="${BTN_STYLE}">Paste from clipboard</button>
-				</div>
-
-				<div id="issue-reporter-extra-slot" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px"></div>
-
-				<div id="issue-reporter-capture-hint" style="margin-bottom:6px;display:none;font-size:12px;color:#b45309">Screen capture needs https - open over your tunnel, or use "Paste from clipboard" instead.</div>
-				<span id="issue-reporter-screenshot-status" style="font-size:12px;color:#64748b"></span>
+			<div class="flex flex-col gap-1">
+				<label for="issue-reporter-description">Description:</label>
+				<markdown-editor id="issue-reporter-description" name="description" placeholder="Describe the issue... (Markdown supported: **bold**, _italic_, # headings, \`code\`, - lists)"></markdown-editor>
 			</div>
 
-			<div id="issue-reporter-error" style="display:none;font-size:13px;color:#dc2626"></div>
-			<div id="issue-reporter-success" style="display:none;font-size:13px;color:#16a34a"></div>
+			<div>
+				<div class="mb-1">Screenshots:</div>
 
-			<div style="margin-top:4px;display:flex;justify-content:flex-end;gap:8px">
-				<button type="button" id="issue-reporter-cancel" style="${BTN_STYLE}">Cancel</button>
-				<button type="submit" id="issue-reporter-submit" style="cursor:pointer;border:1px solid #16a34a;border-radius:4px;background:#16a34a;padding:4px 12px;color:#fff;font:inherit">Create Issue</button>
+				<div class="mb-1.5 flex flex-wrap items-center gap-2">
+					<button type="button" id="issue-reporter-capture-before" class="capture-btn cursor-pointer rounded border border-slate-300 bg-slate-50 px-2.5 py-1 disabled:cursor-not-allowed disabled:opacity-50">Capture before state</button>
+					<div id="issue-reporter-before-slot" class="flex flex-wrap items-center gap-2"></div>
+				</div>
+
+				<div class="mb-1.5 flex flex-wrap items-center gap-2">
+					<button type="button" id="issue-reporter-capture-after" class="capture-btn cursor-pointer rounded border border-slate-300 bg-slate-50 px-2.5 py-1 disabled:cursor-not-allowed disabled:opacity-50">Capture after state</button>
+					<div id="issue-reporter-after-slot" class="flex flex-wrap items-center gap-2"></div>
+				</div>
+
+				<div class="mb-1.5 flex flex-wrap items-center gap-2">
+					<button type="button" id="issue-reporter-add-another" class="capture-btn cursor-pointer rounded border border-slate-300 bg-slate-50 px-2.5 py-1 disabled:cursor-not-allowed disabled:opacity-50">Add another</button>
+					<button type="button" id="issue-reporter-paste" class="cursor-pointer rounded border border-slate-300 bg-slate-50 px-2.5 py-1">Paste from clipboard</button>
+				</div>
+
+				<div id="issue-reporter-extra-slot" class="flex flex-wrap items-center gap-2"></div>
+
+				<div id="issue-reporter-capture-hint" class="mb-1.5 hidden text-xs text-amber-600">Screen capture needs https - open over your tunnel, or use "Paste from clipboard" instead.</div>
+				<span id="issue-reporter-screenshot-status" class="text-xs text-slate-500"></span>
+			</div>
+
+			<div id="issue-reporter-error" class="hidden text-[13px] text-red-600"></div>
+			<div id="issue-reporter-success" class="hidden text-[13px] text-green-600"></div>
+
+			<div class="mt-1 flex justify-end gap-2">
+				<button type="button" id="issue-reporter-cancel" class="cursor-pointer rounded border border-slate-300 bg-slate-50 px-3 py-1.5">Cancel</button>
+				<button type="submit" id="issue-reporter-submit" class="cursor-pointer rounded border border-green-600 bg-green-600 px-3 py-1.5 text-white">Create Issue</button>
 			</div>
 		</form>
 	`;
@@ -119,10 +169,8 @@ function update_capture_availability() {
 	const supported = screen_capture_supported();
 	for (const button of dialog_el.querySelectorAll(".capture-btn")) {
 		button.disabled = !supported;
-		button.style.opacity = supported ? "1" : "0.5";
-		button.style.cursor = supported ? "pointer" : "not-allowed";
 	}
-	dialog_el.querySelector("#issue-reporter-capture-hint").style.display = supported ? "none" : "block";
+	dialog_el.querySelector("#issue-reporter-capture-hint").classList.toggle("hidden", supported);
 }
 
 function add_snapshot(label, blob) {
@@ -132,28 +180,28 @@ function add_snapshot(label, blob) {
 
 function build_snapshot_row(snapshot, index) {
 	const row = document.createElement("div");
-	row.style.cssText = "display:flex;align-items:center;gap:8px";
+	row.className = "flex items-center gap-2";
 
 	const image = document.createElement("img");
 	image.src = URL.createObjectURL(snapshot.blob);
-	image.style.cssText = "height:54px;width:72px;border-radius:4px;border:1px solid #cbd5e1;object-fit:cover";
+	image.className = "h-[54px] w-[72px] rounded border border-slate-300 object-cover";
 
 	const label = document.createElement("input");
 	label.type = "text";
 	label.value = snapshot.label;
-	label.style.cssText = "width:110px;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:4px;background:#f8fafc;padding:4px 6px;color:#1a1a2e;font:inherit";
+	label.className = "w-[110px] box-border rounded border border-slate-300 bg-slate-50 px-1.5 py-1 text-[#1a1a2e]";
 	label.addEventListener("change", () => { snapshot.label = label.value.trim() || "Screenshot"; });
 
 	const annotate_btn = document.createElement("button");
 	annotate_btn.type = "button";
 	annotate_btn.textContent = "Annotate";
-	annotate_btn.style.cssText = BTN_STYLE + ";padding:4px 8px;font-size:12px";
+	annotate_btn.className = "cursor-pointer rounded border border-slate-300 bg-slate-50 px-2 py-1 text-xs";
 	annotate_btn.addEventListener("click", () => re_annotate(index));
 
 	const remove_btn = document.createElement("button");
 	remove_btn.type = "button";
 	remove_btn.textContent = "Remove";
-	remove_btn.style.cssText = "cursor:pointer;border:none;background:none;padding:4px;color:#dc2626;font-size:12px";
+	remove_btn.className = "cursor-pointer p-1 text-xs text-red-600";
 	remove_btn.addEventListener("click", () => {
 		snapshots.splice(index, 1);
 		render_thumbnails();
@@ -215,6 +263,25 @@ function screen_capture_supported() {
 	return !!(window.isSecureContext && navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
 }
 
+// Chrome composites its tab-capture indicator ("You're sharing this screen"
+// toast + tab outline) into the first frames of a tab-capture stream, sometimes
+// at the indicator's own small dimensions. The real page frames only arrive
+// once the indicator clears, so grabbing the first decoded frame produced a
+// screenshot of the indicator alone (issue #406). Wait for the stream to switch
+// to real content: the switch changes the video dimensions and fires a resize
+// event on the video element, while window/screen capture never resizes, so the
+// wait is capped by a timeout instead of hanging when the first size is final.
+function settle_capture_stream(video) {
+	return new Promise((resolve) => {
+		const timeout = setTimeout(resolve, 1500);
+		video.addEventListener("resize", () => {
+			clearTimeout(timeout);
+			// Let the first frame at the new dimensions land before drawing.
+			requestAnimationFrame(() => requestAnimationFrame(resolve));
+		}, { once: true });
+	});
+}
+
 async function capture_viewport_frame() {
 	if (!screen_capture_supported()) {
 		throw new Error("Screen capture requires a secure context (https or localhost)");
@@ -230,7 +297,7 @@ async function capture_viewport_frame() {
 			video.onerror = () => reject(new Error("Failed to decode the captured stream"));
 			video.play().catch(reject);
 		});
-		await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+		await settle_capture_stream(video);
 		const canvas = document.createElement("canvas");
 		canvas.width = video.videoWidth;
 		canvas.height = video.videoHeight;
@@ -359,21 +426,23 @@ function save_annotation_settings(settings) {
 function run_annotation(base_canvas, reference_canvas, reference_label, active_label) {
 	return new Promise((resolve) => {
 		const overlay = document.createElement("div");
-		overlay.style.cssText = "position:fixed;inset:0;z-index:2147483000;display:flex;flex-direction:column;user-select:none;background:rgba(0,0,0,0.85)";
+		overlay.className = "fixed inset-0 z-[2147483000] flex select-none flex-col bg-black/85";
 
 		const toolbar = document.createElement("div");
-		toolbar.style.cssText = "display:flex;align-items:center;gap:10px;overflow-x:auto;background:rgba(30,32,38,0.95);padding:8px 12px;font-size:14px;color:#fff";
+		toolbar.className = "flex items-center gap-2.5 overflow-x-auto bg-slate-900/95 px-3 py-2 text-sm text-white";
 
 		const tool_select = document.createElement("select");
 		tool_select.innerHTML = `
 			<option value="arrow">Arrow</option>
+			<option value="double_arrow">Double Arrow</option>
 			<option value="rect">Rectangle</option>
 			<option value="ellipse">Ellipse</option>
+			<option value="crop">Crop</option>
 			<option value="pen">Pen</option>
 			<option value="blur">Blur / redact</option>
 			<option value="text">Text</option>
 		`;
-		tool_select.style.cssText = "height:28px;width:130px;flex-shrink:0;border-radius:4px;border:1px solid #94a3b8;background:#fff;padding:0 8px;color:#1f2328;font:inherit;line-height:1";
+		tool_select.className = "h-7 w-[130px] shrink-0 appearance-none rounded border-slate-400 bg-white px-2 pr-6 leading-none text-[#1f2328]";
 		tool_select.style.backgroundImage = 'url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns=\'http://www.w3.org/2000/svg\'%20viewBox=\'0%200%2016%2016\'%3E%3Cpath%20fill=\'%236b7280\'%20d=\'M8%2011%203%206h10z\'/%3E%3C/svg%3E")';
 		tool_select.style.backgroundRepeat = "no-repeat";
 		tool_select.style.backgroundPosition = "right 8px center";
@@ -384,14 +453,14 @@ function run_annotation(base_canvas, reference_canvas, reference_label, active_l
 		const color_input = document.createElement("input");
 		color_input.type = "color";
 		color_input.value = saved.color || (is_dark ? "#ffffff" : "#111111");
-		color_input.style.cssText = "height:28px;width:32px;cursor:pointer;border:none;background:transparent;padding:0";
+		color_input.className = "h-7 w-8 cursor-pointer border-none bg-transparent p-0";
 
 		const width_input = document.createElement("input");
 		width_input.type = "range";
 		width_input.min = "2";
 		width_input.max = "24";
 		width_input.value = saved.width || "4";
-		width_input.style.cssText = "width:90px";
+		width_input.className = "w-[90px]";
 
 		if (saved.tool && Array.from(tool_select.options).some((option) => option.value === saved.tool)) {
 			tool_select.value = saved.tool;
@@ -416,13 +485,13 @@ function run_annotation(base_canvas, reference_canvas, reference_label, active_l
 			const button = document.createElement("button");
 			button.type = "button";
 			button.textContent = text;
-			button.style.cssText = "display:inline-flex;height:28px;flex-shrink:0;align-items:center;justify-content:center;white-space:nowrap;border-radius:4px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);padding:0 10px;color:#fff;cursor:pointer;font:inherit;line-height:1";
+			button.className = "inline-flex h-7 shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded border border-white/20 bg-white/10 px-2.5 leading-none text-white";
 			return button;
 		}
 
 		function toolbar_group(label, control) {
 			const group = document.createElement("span");
-			group.style.cssText = "display:inline-flex;flex-shrink:0;align-items:center;gap:6px;white-space:nowrap";
+			group.className = "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap";
 			group.append(label, control);
 			return group;
 		}
@@ -432,7 +501,7 @@ function run_annotation(base_canvas, reference_canvas, reference_label, active_l
 		const clear_btn = toolbar_button("Clear");
 		const cancel_btn = toolbar_button("Cancel");
 		const done_btn = toolbar_button("Done");
-		done_btn.style.cssText = "display:inline-flex;height:28px;flex-shrink:0;align-items:center;justify-content:center;white-space:nowrap;border-radius:4px;border:1px solid #16a34a;background:#16a34a;padding:0 14px;color:#fff;cursor:pointer;font:inherit;line-height:1";
+		done_btn.className = "inline-flex h-7 shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded border border-green-600 bg-green-600 px-3.5 leading-none text-white";
 
 		toolbar.append(
 			toolbar_group("Tool", tool_select),
@@ -446,24 +515,21 @@ function run_annotation(base_canvas, reference_canvas, reference_label, active_l
 		);
 
 		const canvas_wrap = document.createElement("div");
-		canvas_wrap.style.cssText = "flex:1;display:flex;align-items:center;justify-content:center;gap:16px;overflow:auto;padding:12px";
+		canvas_wrap.className = "flex flex-1 items-center justify-center gap-4 overflow-auto p-3";
 
 		function build_panel(label_text, source_canvas, active) {
 			const panel = document.createElement("div");
-			panel.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:6px";
-			if (reference_canvas) panel.style.flex = "1";
+			panel.className = reference_canvas ? "flex min-w-0 flex-1 flex-col items-center gap-1.5" : "flex flex-col items-center gap-1.5";
 			if (label_text) {
 				const label = document.createElement("div");
 				label.textContent = label_text;
-				label.style.cssText = "font-size:13px;color:#fff;opacity:0.85";
+				label.className = "text-[13px] text-white opacity-85";
 				panel.appendChild(label);
 			}
 			const el = document.createElement("canvas");
 			el.width = source_canvas.width;
 			el.height = source_canvas.height;
-			el.style.cssText = active
-				? "max-height:calc(100vh - 160px);max-width:100%;cursor:crosshair;touch-action:none;background:#fff"
-				: "max-height:calc(100vh - 160px);max-width:100%;background:#fff";
+			el.className = active ? "max-h-[calc(100vh-160px)] max-w-full cursor-crosshair touch-none bg-white" : "max-h-[calc(100vh-160px)] max-w-full bg-white";
 			el.getContext("2d").drawImage(source_canvas, 0, 0);
 			panel.appendChild(el);
 			canvas_wrap.appendChild(panel);
@@ -514,7 +580,7 @@ function run_annotation(base_canvas, reference_canvas, reference_label, active_l
 				ctx.moveTo(shape.points[0][0], shape.points[0][1]);
 				for (let i = 1; i < shape.points.length; i++) ctx.lineTo(shape.points[i][0], shape.points[i][1]);
 				ctx.stroke();
-			} else if (shape.type === "arrow") {
+			} else if (shape.type === "arrow" || shape.type === "double_arrow") {
 				const dx = shape.x2 - shape.x1;
 				const dy = shape.y2 - shape.y1;
 				const angle = Math.atan2(dy, dx);
@@ -523,12 +589,16 @@ function run_annotation(base_canvas, reference_canvas, reference_label, active_l
 				ctx.moveTo(shape.x1, shape.y1);
 				ctx.lineTo(shape.x2, shape.y2);
 				ctx.stroke();
-				ctx.beginPath();
-				ctx.moveTo(shape.x2, shape.y2);
-				ctx.lineTo(shape.x2 - head * Math.cos(angle - Math.PI / 6), shape.y2 - head * Math.sin(angle - Math.PI / 6));
-				ctx.moveTo(shape.x2, shape.y2);
-				ctx.lineTo(shape.x2 - head * Math.cos(angle + Math.PI / 6), shape.y2 - head * Math.sin(angle + Math.PI / 6));
-				ctx.stroke();
+				const draw_arrow_head = (x, y, direction) => {
+					ctx.beginPath();
+					ctx.moveTo(x, y);
+					ctx.lineTo(x - head * Math.cos(direction - Math.PI / 6), y - head * Math.sin(direction - Math.PI / 6));
+					ctx.moveTo(x, y);
+					ctx.lineTo(x - head * Math.cos(direction + Math.PI / 6), y - head * Math.sin(direction + Math.PI / 6));
+					ctx.stroke();
+				};
+				draw_arrow_head(shape.x2, shape.y2, angle);
+				if (shape.type === "double_arrow") draw_arrow_head(shape.x1, shape.y1, angle + Math.PI);
 			} else if (shape.type === "rect") {
 				const x = Math.min(shape.x1, shape.x2);
 				const y = Math.min(shape.y1, shape.y2);
@@ -544,7 +614,14 @@ function run_annotation(base_canvas, reference_canvas, reference_label, active_l
 				ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
 				ctx.stroke();
 			} else if (shape.type === "text") {
-				ctx.font = `${Math.max(12, shape.size * 4)}px system-ui, sans-serif`;
+				// The input the text was typed in uses CSS pixels; canvas fonts use
+				// canvas pixels. Scale by the displayed size so the committed text
+				// renders at the same on-screen size, and anchor from the top like
+				// the input did, so it also stays where it was typed.
+				const canvas_rect = canvas.getBoundingClientRect();
+				const display_scale = canvas_rect.width / canvas.width;
+				ctx.font = `${Math.max(12, shape.size * 4) / display_scale}px system-ui, sans-serif`;
+				ctx.textBaseline = "top";
 				ctx.fillText(shape.text, shape.x, shape.y);
 			}
 			ctx.restore();
@@ -569,7 +646,39 @@ function run_annotation(base_canvas, reference_canvas, reference_label, active_l
 
 		function apply_action(shape) {
 			if (shape.type === "blur") apply_blur(shape);
-			else draw_shape(shape);
+			else if (shape.type !== "crop") draw_shape(shape);
+		}
+
+		// The crop tool's keep-region box: dim everything outside the box and
+		// outline it, so the user sees exactly what the exported image will
+		// focus on. The overlay itself never appears in the export.
+		function draw_crop_preview(shape) {
+			if (!shape) return;
+			const x = Math.min(shape.x1, shape.x2);
+			const y = Math.min(shape.y1, shape.y2);
+			const w = Math.abs(shape.x2 - shape.x1);
+			const h = Math.abs(shape.y2 - shape.y1);
+			ctx.save();
+			ctx.fillStyle = "rgba(0,0,0,0.45)";
+			ctx.fillRect(0, 0, canvas.width, y);
+			ctx.fillRect(0, y, x, h);
+			ctx.fillRect(x + w, y, canvas.width - x - w, h);
+			ctx.fillRect(0, y + h, canvas.width, canvas.height - y - h);
+			ctx.setLineDash([8, 5]);
+			ctx.strokeStyle = "#ffffff";
+			ctx.lineWidth = 2;
+			ctx.strokeRect(x, y, w, h);
+			ctx.setLineDash([]);
+			ctx.restore();
+		}
+
+		// Only the most recently drawn crop box applies - drawing another one
+		// replaces the previous keep-region.
+		function latest_crop() {
+			for (let i = actions.length - 1; i >= 0; i--) {
+				if (actions[i].type === "crop") return actions[i];
+			}
+			return null;
 		}
 
 		function redraw() {
@@ -578,9 +687,16 @@ function run_annotation(base_canvas, reference_canvas, reference_label, active_l
 			ctx.drawImage(base_canvas, 0, 0);
 			for (const action of actions) apply_action(action);
 			if (drawing) apply_action(drawing);
+			draw_crop_preview(latest_crop() || (drawing && drawing.type === "crop" ? drawing : null));
 		}
 
 		function commit_action(shape) {
+			if (shape.type === "crop") {
+				// last crop wins: drop any earlier keep-region box
+				for (let i = actions.length - 1; i >= 0; i--) {
+					if (actions[i].type === "crop") actions.splice(i, 1);
+				}
+			}
 			actions.push(shape);
 			redo_stack.length = 0;
 		}
@@ -590,7 +706,8 @@ function run_annotation(base_canvas, reference_canvas, reference_label, active_l
 			input.type = "text";
 			input.placeholder = "Type annotation...";
 			const input_bg = is_dark ? "rgba(20,22,26,.9)" : "rgba(255,255,255,.95)";
-			input.style.cssText = `position:fixed;left:${event.clientX}px;top:${event.clientY}px;z-index:10;border:1px solid ${color_input.value};border-radius:4px;padding:2px 6px;font:${Math.max(12, Number(width_input.value) * 4)}px system-ui,sans-serif;color:${color_input.value};background:${input_bg};`;
+			input.className = "absolute z-10 select-text";
+			input.style.cssText = `left:${event.clientX}px;top:${event.clientY}px;border:1px solid ${color_input.value};border-radius:4px;padding:2px 6px;font:${Math.max(12, Number(width_input.value) * 4)}px system-ui,sans-serif;color:${color_input.value};background:${input_bg};`;
 			overlay.appendChild(input);
 			// Defer focus so the browser's default mousedown focus handling cannot
 			// immediately blur (and dismiss) the freshly created input.
@@ -600,7 +717,20 @@ function run_annotation(base_canvas, reference_canvas, reference_label, active_l
 				if (committed) return;
 				committed = true;
 				const text = input.value.trim();
-				if (text) commit_action({ type: "text", text, x: point.x, y: point.y, color: color_input.value, size: Number(width_input.value) });
+				if (text) {
+					// Anchor the committed text exactly where the input's own text
+					// sits (offset by its border + padding), converted to canvas
+					// coordinates, so the annotation never moves when the input
+					// disappears. The font size is scaled in draw_shape() below to
+					// match the input's on-screen size (canvas units vs CSS px).
+					const input_style = getComputedStyle(input);
+					const text_left_css = event.clientX + parseFloat(input_style.borderLeftWidth) + parseFloat(input_style.paddingLeft);
+					const text_top_css = event.clientY + parseFloat(input_style.borderTopWidth) + parseFloat(input_style.paddingTop);
+					const canvas_rect = canvas.getBoundingClientRect();
+					const x = (text_left_css - canvas_rect.left) * (canvas.width / canvas_rect.width);
+					const y = (text_top_css - canvas_rect.top) * (canvas.height / canvas_rect.height);
+					commit_action({ type: "text", text, x, y, color: color_input.value, size: Number(width_input.value) });
+				}
 				input.remove();
 				redraw();
 			}
@@ -625,6 +755,18 @@ function run_annotation(base_canvas, reference_canvas, reference_label, active_l
 			if (!drawing) return;
 			const point = canvas_point(event);
 			if (drawing.type === "pen") drawing.points.push([point.x, point.y]);
+			else if ((drawing.type === "arrow" || drawing.type === "double_arrow") && (event.ctrlKey || event.metaKey)) {
+				// CTRL constrains arrows to the nearest horizontal or vertical
+				// axis: the off-axis coordinate snaps back to its starting
+				// value so the arrow never lands a few degrees off.
+				if (Math.abs(point.x - drawing.x1) >= Math.abs(point.y - drawing.y1)) {
+					drawing.x2 = point.x;
+					drawing.y2 = drawing.y1;
+				} else {
+					drawing.x2 = drawing.x1;
+					drawing.y2 = point.y;
+				}
+			}
 			else { drawing.x2 = point.x; drawing.y2 = point.y; }
 			redraw();
 		}
@@ -633,6 +775,13 @@ function run_annotation(base_canvas, reference_canvas, reference_label, active_l
 			if (!drawing) return;
 			if (canvas.hasPointerCapture && canvas.hasPointerCapture(event.pointerId)) {
 				canvas.releasePointerCapture(event.pointerId);
+			}
+			// A click-sized crop box is meaningless - drop it instead of
+			// committing a keep-region that would clip the whole image.
+			if (drawing.type === "crop" && (Math.abs(drawing.x2 - drawing.x1) < 8 || Math.abs(drawing.y2 - drawing.y1) < 8)) {
+				drawing = null;
+				redraw();
+				return;
 			}
 			commit_action(drawing);
 			drawing = null;
@@ -661,8 +810,27 @@ function run_annotation(base_canvas, reference_canvas, reference_label, active_l
 		}
 
 		function finish() {
-			redraw();
-			canvas.toBlob((blob) => {
+			// Re-render without the crop overlay - the keep-region box is a UI
+			// affordance, not part of the exported image.
+			ctx.filter = "none";
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			ctx.drawImage(base_canvas, 0, 0);
+			for (const action of actions) apply_action(action);
+
+			const crop = latest_crop();
+			let out_canvas = canvas;
+			if (crop) {
+				const sx = Math.max(0, Math.min(Math.round(Math.min(crop.x1, crop.x2)), canvas.width));
+				const sy = Math.max(0, Math.min(Math.round(Math.min(crop.y1, crop.y2)), canvas.height));
+				const sw = Math.max(1, Math.min(Math.round(Math.abs(crop.x2 - crop.x1)), canvas.width - sx));
+				const sh = Math.max(1, Math.min(Math.round(Math.abs(crop.y2 - crop.y1)), canvas.height - sy));
+				const cropped = document.createElement("canvas");
+				cropped.width = sw;
+				cropped.height = sh;
+				cropped.getContext("2d").drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh);
+				out_canvas = cropped;
+			}
+			out_canvas.toBlob((blob) => {
 				cleanup();
 				resolve(blob);
 			}, "image/png");
@@ -676,7 +844,15 @@ function run_annotation(base_canvas, reference_canvas, reference_label, active_l
 		function on_keydown(event) {
 			const target = event.target;
 			if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
-			if (event.key === "Escape") cancel();
+			if (event.key === "Escape") {
+				// cancel() reopens the issue dialog asynchronously (the promise
+				// resolves on the next microtask). Without preventDefault, the
+				// browser's own Escape-closes-dialog default action runs after
+				// dispatch and closes the freshly reopened dialog, making the
+				// whole issue form (title, snapshots) look lost (issue #398).
+				event.preventDefault();
+				cancel();
+			}
 			if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z" && !event.shiftKey) { event.preventDefault(); undo(); }
 			if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z" && event.shiftKey) { event.preventDefault(); redo(); }
 		}
@@ -702,8 +878,8 @@ async function submit_issue(event) {
 	const error_el = dialog_el.querySelector("#issue-reporter-error");
 	const success_el = dialog_el.querySelector("#issue-reporter-success");
 
-	error_el.style.display = "none";
-	success_el.style.display = "none";
+	error_el.classList.add("hidden");
+	success_el.classList.add("hidden");
 
 	const form_data = new FormData(form);
 	form_data.set("page_url", filed_from_url || window.location.href);
@@ -721,7 +897,7 @@ async function submit_issue(event) {
 
 		if (!response.ok || !result.ok) {
 			error_el.textContent = result.error || "Failed to create issue";
-			error_el.style.display = "block";
+			error_el.classList.remove("hidden");
 			return;
 		}
 
@@ -730,32 +906,36 @@ async function submit_issue(event) {
 		const screenshot_errors = result.screenshot_errors || [];
 		if (screenshot_errors.length > 0) {
 			success_el.textContent = `Issue created without screenshot(s): ${result.url}`;
-			success_el.style.display = "block";
+			success_el.classList.remove("hidden");
 			error_el.textContent = `Screenshot upload failed: ${screenshot_errors.join("; ")}`;
-			error_el.style.display = "block";
+			error_el.classList.remove("hidden");
 			window.open(result.url, "_blank");
 			return;
 		}
 
 		success_el.textContent = `Issue created: ${result.url}`;
-		success_el.style.display = "block";
+		success_el.classList.remove("hidden");
 		window.open(result.url, "_blank");
 		dialog_el.close();
 	} catch (err) {
 		error_el.textContent = err instanceof Error ? err.message : String(err);
-		error_el.style.display = "block";
+		error_el.classList.remove("hidden");
 	} finally {
 		submit_btn.disabled = false;
 		submit_btn.textContent = "Create Issue";
 	}
-}
-
-function reset_form_state() {
+} function reset_form_state() {
 	const error_el = dialog_el.querySelector("#issue-reporter-error");
 	const success_el = dialog_el.querySelector("#issue-reporter-success");
-	error_el.style.display = "none";
-	success_el.style.display = "none";
+	error_el.classList.add("hidden");
+	success_el.classList.add("hidden");
 	dialog_el.querySelector("#issue-reporter-form").reset();
+	// form.reset() restores the markdown-editor's hidden textarea to its
+	// default (empty) value, but its contenteditable surface still shows the
+	// previous filing's rendered markdown - clear both so a fresh dialog opens
+	// empty (upstream reepolee-dev issue #417).
+	const md_editor = dialog_el.querySelector("markdown-editor[name=\"description\"]");
+	if (md_editor && typeof md_editor.clear === "function") md_editor.clear();
 	snapshots = [];
 	render_thumbnails();
 	set_status("");
@@ -769,6 +949,7 @@ function open_issue_dialog() {
 
 	if (!dialog_el) {
 		dialog_el = build_dialog();
+		load_repos();
 		dialog_el.querySelector("#issue-reporter-form").addEventListener("submit", submit_issue);
 		dialog_el.querySelector("#issue-reporter-cancel").addEventListener("click", () => dialog_el.close());
 		dialog_el.querySelector("#issue-reporter-paste").addEventListener("click", paste_from_clipboard);
