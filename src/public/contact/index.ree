@@ -1,0 +1,28 @@
+{#layout("layout")}
+
+<div class="page contact-page">
+	<h1>{_ ui.title}</h1>
+	<p>{_ ui.description}</p>
+
+	<div class="contact-details">
+		<div class="contact-item">
+			<strong>{_ ui.email_label}</strong>
+			<a href="mailto:{= props.email }">{= props.email}</a>
+		</div>
+		<div class="contact-item">
+			<strong>{_ ui.phone_label}</strong>
+			<span>{= props.phone}</span>
+		</div>
+		<div class="contact-item">
+			<strong>{_ ui.address_label}</strong>
+			<address>{= props.address}</address>
+		</div>
+	</div>
+
+	<div class="social-links">
+		<h2>{_ ui.social_title}</h2>
+		{#each props.social as link}
+			<a href="{= link.url }" class="social-link">{= link.label}</a>
+		{/each}
+	</div>
+</div>
