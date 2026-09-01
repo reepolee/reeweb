@@ -1,0 +1,75 @@
+{
+	"name": "ree-web",
+	"project-type": "template",
+	"ree": {
+		"project_family": "reeweb",
+		"template_roots": [
+			"src/public"
+		],
+		"component_roots": [
+			"src/components"
+		],
+		"translation_provider": "route-json",
+		"translation_roots": [
+			"src/public"
+		],
+		"issue_repo": "reepolee/ree-web"
+	},
+	"version": "26.09.1",
+	"private": false,
+	"license": "MIT",
+	"description": "Static site generator with .ree templates and multi-language support",
+	"sponsor": {
+		"url": "https://github.com/sponsors/alesvaupotic"
+	},
+	"author": {
+		"name": "Aleš Vaupotič",
+		"email": "ales@reepolee.com"
+	},
+	"type": "module",
+	"scripts": {
+		"postinstall": "bun run reeweb:install",
+		"reeweb:install": "bun scripts/install.ts",
+		"reeweb:uninstall": "bun scripts/uninstall.ts",
+		"dev": "bun scripts/dev/orchestrate.ts",
+		"development": "bun --hot --no-clear-screen scripts/dev.ts",
+		"dynamic:sync": "bun scripts/sync_dynamic_assets.ts",
+		"prepare:images": "bun scripts/prepare_images.ts",
+		"css:build": "tw -i ./src/css/style.css -o ./src/public/css/style.min.css --minify",
+		"css:watch": "tw -i ./src/css/style.css -o ./src/public/css/style.min.css --minify --watch=always",
+		"ssg": "bun run dynamic:sync && bun run prepare:images && bun css:build && bun scripts/ssg.ts --public ./src/public --dist ./dist && bun run og:images && bun run sitemap && bun run rss && bun run ssg:search",
+		"ssg:print-url": "bun scripts/ssg.ts --print-url",
+		"ssg:search": "bun scripts/generate_search_index.ts --public ./src/public --dist ./dist",
+		"og:images": "bun scripts/generate_og_images.ts --dist ./dist",
+		"mcp": "bun scripts/mcp/index.ts",
+		"rss": "bun scripts/generate_rss.ts --public ./src/public --dist ./dist",
+		"sitemap": "bun scripts/generate_sitemap.ts --public ./src/public --dist ./dist",
+		"cf:share": "wrangler dev --tunnel",
+		"cf:deploy": "wrangler deploy && bun scripts/print_site_url.ts",
+		"format": "reettier",
+		"preview": "bun scripts/preview.ts",
+		"publisher": "bun scripts/publisher.ts",
+		"get:tsc": "bun scripts/cli.ts tsc --version=7.0.2",
+		"get:tw": "bun scripts/cli.ts tw --version=4.3.3",
+		"get:reettier": "bun scripts/cli.ts reettier",
+		"get:reesql": "bun scripts/cli.ts reesql",
+		"get:vips": "bun scripts/cli.ts vips --version=8.18.4",
+		"get:zod": "mkdir -p vendor && curl -fsSL https://cdn.jsdelivr.net/npm/zod@4.5.4/+esm -o vendor/zod.min.js && curl -fsSL https://cdn.jsdelivr.net/npm/zod@4.5.4/LICENSE -o vendor/zod.min.js.LICENSE.txt",
+		"get:hljs": "mkdir -p vendor && curl -fsSL https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.12.0/highlight.min.js -o vendor/highlight.min.js && curl -fsSL https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.12.0/styles/atom-one-dark.min.css -o vendor/highlight-atom-one-dark.min.css && curl -fsSL https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.12.0/LICENSE -o vendor/highlight.min.js.LICENSE.txt && curl -fsSL https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.12.0/LICENSE -o vendor/highlight-atom-one-dark.min.css.LICENSE.txt",
+		"get:pre": "bun scripts/install/prerequisites.ts",
+		"vendor:check": "bun scripts/vendor_check.ts",
+		"engine:check": "bun scripts/engine_drift_check.ts",
+		"naming:check": "bun scripts/naming_check.ts",
+		"test:replay:server": "bun run ssg && bun scripts/preview.ts --port 3099",
+		"test:replay": "bun scripts/test_replay.ts",
+		"remove:demo": "bun scripts/remove_demo_content.ts"
+	},
+	"bun-create": {
+		"postinstall": "bun scripts/install.ts"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "5.20260829.1",
+		"@types/bun": "1.4.0",
+		"tailwind-merge": "3.6.0"
+	}
+}
