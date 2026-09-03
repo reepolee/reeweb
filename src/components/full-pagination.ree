@@ -47,7 +47,8 @@
 	<nav
 		role="navigation"
 		aria-label="{= labels.aria }"
-		class="flex items-center justify-between border-t border-neutral-200 pt-4">
+		class="flex items-center justify-between border-t border-neutral-200 pt-4"
+	>
 		<!-- Mobile: previous / next only -->
 		<div class="flex flex-1 justify-between sm:hidden">
 			{#if p.prev_url}

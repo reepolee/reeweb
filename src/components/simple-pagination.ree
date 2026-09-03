@@ -17,7 +17,8 @@
 	<nav
 		role="navigation"
 		aria-label="{= labels.aria }"
-		class="flex items-center justify-between border-t border-neutral-200 pt-4">
+		class="flex items-center justify-between border-t border-neutral-200 pt-4"
+	>
 		{#if show_prev}
 			{#if p.prev_url}
 				<a href="{~ p.prev_url }" rel="prev" class="{~ link_base }">{= labels.previous}</a>

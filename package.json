@@ -15,7 +15,7 @@
 		],
 		"issue_repo": "reepolee/ree-web"
 	},
-	"version": "26.09.1",
+	"version": "26.09.2",
 	"private": false,
 	"license": "MIT",
 	"description": "Static site generator with .ree templates and multi-language support",
