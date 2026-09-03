@@ -1,0 +1,24 @@
+{
+	"address": "123 Spletna ulica, Mesto razvijalcev, DC 10001",
+	"email": "hello@example.com",
+	"phone": "+1 (555) 123-4567",
+	"route_name": "kontakt",
+	"social": [
+		{
+			"label": "GitHub",
+			"url": "https://github.com/example"
+		},
+		{
+			"label": "Twitter",
+			"url": "https://twitter.com/example"
+		}
+	],
+	"ui": {
+		"address_label": "Naslov",
+		"description": "Stopite v stik - z veseljem vas bomo slišali.",
+		"email_label": "E-pošta",
+		"phone_label": "Telefon",
+		"social_title": "Sledite nam",
+		"title": "Kontakt"
+	}
+}

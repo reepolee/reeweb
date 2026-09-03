@@ -1,0 +1,51 @@
+{
+	"nav": {
+		"about": "About",
+		"blog": "Blog",
+		"contact": "Contact",
+		"home": "Home"
+	},
+	"route_name": "",
+	"search": {
+		"placeholder": "Search…",
+		"type_to_search": "Type to search…"
+	},
+	"site_name": "Ree Web",
+	"ui": {
+		"feature_1_text": "Full i18n support with automatic fallback. Each page renders in every language you configure.",
+		"feature_1_title": "Multi-Language",
+		"feature_2_text": "Built entirely on Bun's native APIs. No bundlers, no build tools, no npm install needed for the core.",
+		"feature_2_title": "Zero Dependencies",
+		"feature_3_text": "Use shared layouts, components, and per-route translations. Language-variant templates for full control.",
+		"feature_3_title": "Flexible Templates",
+		"language_names": {
+			"en-us": "English",
+			"sl-si": "Slovenščina"
+		},
+		"language_names_to": {
+			"en-us": "English",
+			"sl-si": "Slovenščina"
+		},
+		"learn_more": "Learn More →",
+		"role_dev": "🔧 Developer mode — all features unlocked",
+		"role_guest": "🔒 Guest — sign in for full access",
+		"role_user": "👤 Welcome back, authenticated user",
+		"switch_pattern": "The {{ }} block pre-computes a 'role' string using if/else-if, then {#switch} dispatches cleanly. This is the idiomatic .ree pattern for multi-way branching — compute one value in JS, switch on it.",
+		"switch_pattern_title": "Switch Demo — Simulating else-if",
+		"pagination": {
+			"label": "Pagination",
+			"next": "Next",
+			"of": "of",
+			"previous": "Previous",
+			"results": "results",
+			"showing": "Showing",
+			"to": "to",
+			"total_label": "total"
+		},
+		"welcome_text": "A blazing-fast multi-language static site built with Bun and .ree templates.",
+
+		"welcome_title": "Welcome to Ree Web",
+		"starwars_title": "Birth Years of Star Wars Characters",
+		"framework_title": "Frameworks"
+	}
+}
